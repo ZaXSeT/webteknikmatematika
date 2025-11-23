@@ -17,6 +17,73 @@ export default function UploadSection({ username }: UploadSectionProps) {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
 
+    // Compression states
+    const [compressionProgress, setCompressionProgress] = useState<number>(0);
+    const [isCompressing, setIsCompressing] = useState(false);
+    const ffmpegRef = useRef<any>(null);
+
+    const loadFFmpeg = async () => {
+        if (ffmpegRef.current) return ffmpegRef.current;
+
+        const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+        const { toBlobURL } = await import('@ffmpeg/util');
+
+        const ffmpeg = new FFmpeg();
+        ffmpegRef.current = ffmpeg;
+
+        if (!ffmpeg.loaded) {
+            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+            await ffmpeg.load({
+                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+            });
+        }
+
+        return ffmpeg;
+    };
+
+    const compressVideo = async (file: File): Promise<File> => {
+        setIsCompressing(true);
+        setUploadStatus("Initializing compression...");
+
+        try {
+            const ffmpeg = await loadFFmpeg();
+            const { fetchFile } = await import('@ffmpeg/util');
+
+            const inputName = 'input.mp4';
+            const outputName = 'output.mp4';
+
+            await ffmpeg.writeFile(inputName, await fetchFile(file));
+
+            ffmpeg.on('progress', ({ progress }) => {
+                setCompressionProgress(Math.round(progress * 100));
+                setUploadStatus(`Compressing video: ${Math.round(progress * 100)}%`);
+            });
+
+            // Compress: Scale to 720p, CRF 28 (lower quality but decent), ultrafast preset
+            await ffmpeg.exec([
+                '-i', inputName,
+                '-vf', 'scale=720:-2', // Scale width to 720, height auto (divisible by 2)
+                '-c:v', 'libx264',
+                '-crf', '28',
+                '-preset', 'ultrafast',
+                outputName
+            ]);
+
+            const data = await ffmpeg.readFile(outputName);
+            const compressedBlob = new Blob([data], { type: 'video/mp4' });
+
+            return new File([compressedBlob], file.name, { type: 'video/mp4' });
+
+        } catch (error) {
+            console.error("Compression error:", error);
+            throw new Error("Failed to compress video");
+        } finally {
+            setIsCompressing(false);
+            setCompressionProgress(0);
+        }
+    };
+
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -58,23 +125,34 @@ export default function UploadSection({ username }: UploadSectionProps) {
         }
 
         setIsUploading(true);
-        setUploadStatus("Uploading...");
+        setUploadStatus("Starting upload...");
 
         try {
-            // Import supabase client dynamically or use from lib if available
-            // Since this is a client component, we can import from @/lib/supabase if it's safe for client
-            // But let's check if @/lib/supabase is safe. It uses process.env.NEXT_PUBLIC_... so it is safe.
             const { supabase } = await import("@/lib/supabase");
 
             for (const file of files) {
+                let fileToUpload = file;
+
+                // Check if video needs compression (e.g., > 20MB)
+                if (file.type.startsWith('video/') && file.size > 20 * 1024 * 1024) {
+                    setUploadStatus("Video is large (>20MB). Compressing...");
+                    try {
+                        fileToUpload = await compressVideo(file);
+                        setUploadStatus("Compression finished. Uploading...");
+                    } catch (e) {
+                        console.error("Compression failed, trying original file", e);
+                        setUploadStatus("Compression failed. Trying original file...");
+                    }
+                }
+
                 // 1. Upload to Supabase Storage directly
-                const filename = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
+                const filename = `${Date.now()}-${fileToUpload.name.replace(/\s/g, '-')}`;
 
                 const { data: uploadData, error: uploadError } = await supabase
                     .storage
                     .from('uploads')
-                    .upload(filename, file, {
-                        contentType: file.type,
+                    .upload(filename, fileToUpload, {
+                        contentType: fileToUpload.type,
                         upsert: false
                     });
 
@@ -97,7 +175,7 @@ export default function UploadSection({ username }: UploadSectionProps) {
                     body: JSON.stringify({
                         username,
                         url: publicUrl,
-                        type: file.type,
+                        type: fileToUpload.type,
                         title: title || file.name,
                         description: description || `Uploaded by ${username}`
                     }),
@@ -123,6 +201,7 @@ export default function UploadSection({ username }: UploadSectionProps) {
             setUploadStatus(`Upload failed: ${error.message}`);
         } finally {
             setIsUploading(false);
+            setIsCompressing(false);
         }
     };
 
@@ -261,7 +340,7 @@ export default function UploadSection({ username }: UploadSectionProps) {
                                     disabled={isUploading || !title.trim()}
                                     className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-full font-medium transition-all hover:scale-105 active:scale-95"
                                 >
-                                    {isUploading ? "Uploading..." : `Upload ${files.length} Files`}
+                                    {isUploading ? (isCompressing ? `Compressing ${compressionProgress}%...` : "Uploading...") : `Upload ${files.length} Files`}
                                 </button>
                                 {uploadStatus && (
                                     <p className={`text-sm ${uploadStatus.includes("failed") || uploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>

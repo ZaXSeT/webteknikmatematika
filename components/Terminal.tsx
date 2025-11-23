@@ -35,6 +35,8 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     const inputRef = useRef<HTMLInputElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const isAtBottom = useRef(true);
+
     useEffect(() => {
         if (isLoggedIn) {
             setStep("logged_in");
@@ -54,15 +56,25 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     }, [isLoggedIn, username]);
 
     useEffect(() => {
-        if (scrollRef.current) {
+        if (scrollRef.current && isAtBottom.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-        inputRef.current?.focus();
+        inputRef.current?.focus({ preventScroll: true });
     }, [lines, step]);
+
+    const handleScroll = () => {
+        if (!scrollRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        const isBottom = scrollHeight - scrollTop - clientHeight < 10; // 10px threshold
+        isAtBottom.current = isBottom;
+    };
 
     const handleCommand = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!input.trim()) return;
+
+        // User is submitting a command, so we should force scroll to bottom to see the result
+        isAtBottom.current = true;
 
         const command = input.trim();
 
@@ -307,6 +319,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             {/* Terminal Body */}
             <div
                 ref={scrollRef}
+                onScroll={handleScroll}
                 className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90"
             >
                 {lines.map((line, i) => (

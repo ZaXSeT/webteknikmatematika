@@ -437,55 +437,47 @@ export default function BlogSection({
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="md:w-2/3 bg-black flex items-center justify-center relative h-full overflow-hidden">
-                            <AnimatePresence mode="wait">
+                            <div className="w-full h-full overflow-hidden relative flex items-center">
                                 <motion.div
-                                    key={currentMediaIndex}
-                                    initial={{ opacity: 0, x: 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="w-full h-full flex items-center justify-center cursor-pointer"
-                                    drag="x"
-                                    dragConstraints={{ left: 0, right: 0 }}
+                                    className="flex h-full w-full"
+                                    animate={{ x: `-${currentMediaIndex * 100}%` }}
+                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    drag={selectedPost.media && selectedPost.media.length > 1 ? "x" : false}
                                     dragElastic={1}
                                     onDragEnd={(e, { offset, velocity }) => {
                                         const swipe = offset.x;
-                                        if (swipe < -10 && (selectedPost.media ? currentMediaIndex < selectedPost.media.length - 1 : false)) {
+                                        const threshold = 50; // Reduced threshold for easier swipe
+                                        const mediaLength = selectedPost.media ? selectedPost.media.length : 1;
+
+                                        if (swipe < -threshold && currentMediaIndex < mediaLength - 1) {
                                             setCurrentMediaIndex(prev => prev + 1);
-                                        } else if (swipe > 10 && currentMediaIndex > 0) {
+                                        } else if (swipe > threshold && currentMediaIndex > 0) {
                                             setCurrentMediaIndex(prev => prev - 1);
                                         }
                                     }}
-                                    onClick={(e) => {
-                                        // Navigate on click (left/right side)
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        const x = e.clientX - rect.left;
-                                        if (x > rect.width / 2) {
-                                            if (selectedPost.media && currentMediaIndex < selectedPost.media.length - 1) {
-                                                setCurrentMediaIndex(prev => prev + 1);
-                                            }
-                                        } else {
-                                            if (currentMediaIndex > 0) {
-                                                setCurrentMediaIndex(prev => prev - 1);
-                                            }
-                                        }
-                                    }}
+                                    style={{ touchAction: "none" }}
                                 >
-                                    {(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).type.startsWith('video') ? (
-                                        <video
-                                            src={(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).url}
-                                            controls
-                                            className="w-full h-full object-contain"
-                                        />
-                                    ) : (
-                                        <img
-                                            src={(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).url}
-                                            alt={selectedPost.title}
-                                            className="w-full h-full object-contain pointer-events-none"
-                                        />
-                                    )}
+                                    {(selectedPost.media || [selectedPost]).map((item: any, index: number) => (
+                                        <div key={index} className="min-w-full h-full flex items-center justify-center relative p-0 md:p-4">
+                                            {item.type.startsWith('video') ? (
+                                                <video
+                                                    src={item.url}
+                                                    controls
+                                                    className="w-full h-full object-contain"
+                                                    playsInline
+                                                />
+                                            ) : (
+                                                <img
+                                                    src={item.url}
+                                                    alt={selectedPost.title}
+                                                    className="w-full h-full object-contain pointer-events-none select-none"
+                                                    draggable={false}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
                                 </motion.div>
-                            </AnimatePresence>
+                            </div>
 
                             {/* Navigation Buttons */}
                             {selectedPost.media && selectedPost.media.length > 1 && (

@@ -215,7 +215,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
     const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
 
     return (
-        <section ref={ref} id="upload" className={`${compact ? 'py-0' : 'py-24'} bg-background text-foreground relative overflow-hidden`}>
+        <section ref={ref} id="upload" className={`${compact ? 'py-0' : 'py-16 md:py-24'} bg-background text-foreground relative overflow-hidden`}>
             {!compact && (
                 <motion.div
                     style={{ y, opacity }}

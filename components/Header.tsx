@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface HeaderProps {
@@ -13,6 +13,8 @@ export default function Header({ isDark, toggleTheme }: HeaderProps) {
 
 
 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     return (
         <motion.header
             initial={{ y: -100, opacity: 0 }}
@@ -20,7 +22,7 @@ export default function Header({ isDark, toggleTheme }: HeaderProps) {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="fixed top-0 left-0 right-0 z-50 bg-white/20 dark:bg-background/80 backdrop-blur-md border-b border-white/20 dark:border-border"
         >
-            <div className="w-full px-8 md:px-12 py-4 flex items-center justify-between">
+            <div className="w-full px-4 md:px-12 py-4 flex items-center justify-between">
                 <a
                     href="#home"
                     onClick={(e) => {
@@ -37,6 +39,8 @@ export default function Header({ isDark, toggleTheme }: HeaderProps) {
                         TeknikMatematika
                     </span>
                 </a>
+
+                {/* Desktop Nav */}
                 <nav className="hidden md:flex gap-10">
                     {["Home", "Upload", "Media"].map((item) => (
                         <a
@@ -53,14 +57,53 @@ export default function Header({ isDark, toggleTheme }: HeaderProps) {
                         </a>
                     ))}
                 </nav>
-                <button
-                    onClick={toggleTheme}
-                    className="p-2 rounded-full hover:bg-accent hover:text-accent-foreground text-slate-800 dark:text-white transition-colors"
-                    aria-label="Toggle theme"
-                >
-                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
+
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-full hover:bg-accent hover:text-accent-foreground text-slate-800 dark:text-white transition-colors"
+                        aria-label="Toggle theme"
+                    >
+                        {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="md:hidden p-2 text-slate-800 dark:text-white"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    </button>
+                </div>
             </div>
+
+            {/* Mobile Menu Overlay */}
+            {isMobileMenuOpen && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="absolute top-full left-0 right-0 bg-white dark:bg-black border-b border-border p-4 md:hidden shadow-xl"
+                >
+                    <nav className="flex flex-col gap-4">
+                        {["Home", "Upload", "Media"].map((item) => (
+                            <a
+                                key={item}
+                                href={`#${item.toLowerCase()}`}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setIsMobileMenuOpen(false);
+                                    const element = document.getElementById(item.toLowerCase());
+                                    element?.scrollIntoView({ behavior: "smooth" });
+                                }}
+                                className="text-lg font-medium text-slate-800 dark:text-zinc-400 hover:text-pink-600 dark:hover:text-white transition-colors p-2 rounded-lg hover:bg-muted"
+                            >
+                                {item}
+                            </a>
+                        ))}
+                    </nav>
+                </motion.div>
+            )}
         </motion.header>
     );
 }

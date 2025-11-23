@@ -21,7 +21,7 @@ export default function BlogSection({
     showViewAll = true,
     hideHeader = false,
     fullWidth = false,
-    gridClassName = "columns-2 md:columns-3 lg:columns-4 gap-4",
+    gridClassName = "columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4",
     forceSquare = false
 }: BlogSectionProps) {
     const [currentUsername, setCurrentUsername] = useState<string | undefined>(propUsername);

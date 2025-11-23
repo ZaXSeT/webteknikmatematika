@@ -292,7 +292,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             {/* Terminal Body */}
             <div
                 ref={scrollRef}
-                className="p-6 h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90"
+                className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90"
             >
                 {lines.map((line, i) => (
                     <motion.div

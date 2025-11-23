@@ -130,13 +130,14 @@ export default function UploadSection({ username, compact = false }: UploadSecti
 
         try {
             const { supabase } = await import("@/lib/supabase");
+            const mediaItems: { url: string, type: string }[] = [];
 
             for (const file of files) {
                 let fileToUpload = file;
 
                 // Check if video needs compression (e.g., > 20MB)
                 if (file.type.startsWith('video/') && file.size > 20 * 1024 * 1024) {
-                    setUploadStatus("Video is large (>20MB). Compressing...");
+                    setUploadStatus(`Compressing ${file.name}...`);
                     try {
                         fileToUpload = await compressVideo(file);
                         setUploadStatus("Compression finished. Uploading...");
@@ -167,26 +168,27 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                     .from('uploads')
                     .getPublicUrl(filename);
 
-                // 3. Save metadata to DB via API
-                const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        username,
-                        url: publicUrl,
-                        type: fileToUpload.type,
-                        title: title || file.name,
-                        description: description || `Uploaded by ${username}`
-                    }),
-                });
+                mediaItems.push({ url: publicUrl, type: fileToUpload.type });
+            }
 
-                const data = await res.json();
+            // 3. Save metadata to DB via API (Single Post)
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username,
+                    media: mediaItems,
+                    title: title || (files.length === 1 ? files[0].name : `${files.length} items`),
+                    description: description || `Uploaded by ${username}`
+                }),
+            });
 
-                if (!res.ok) {
-                    throw new Error(data.message || `Failed to save metadata for ${file.name}`);
-                }
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to save post metadata");
             }
             setUploadStatus("Upload successful!");
             setFiles([]);

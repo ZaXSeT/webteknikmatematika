@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import bcrypt from "bcryptjs";
 
 const VALID_NIMS = [
     "03082240018", "03082240002", "03082240008", "03082240017", "03082240014",
@@ -57,10 +58,11 @@ export async function POST(request: Request) {
         }
 
         // 3. Create user
+        const hashedPassword = await bcrypt.hash(password, 10);
         const { data: newUser, error: insertError } = await supabase
             .from('User')
             .insert([
-                { username, nim, password }
+                { username, nim, password: hashedPassword }
             ])
             .select()
             .single();

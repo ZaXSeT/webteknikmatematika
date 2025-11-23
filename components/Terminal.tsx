@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Terminal as TerminalIcon } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface TerminalProps {
     onLogin: (username: string) => void;
@@ -11,7 +12,7 @@ interface TerminalProps {
     username?: string;
 }
 
-type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "reg_nim" | "reg_username" | "reg_password" | "idle";
+type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "reg_nim" | "reg_username" | "reg_password" | "forgot_nim" | "forgot_username" | "reset_password" | "idle";
 
 const VALID_NIMS = [
     "03082240018", "03082240002", "03082240008", "03082240017", "03082240014",
@@ -21,6 +22,10 @@ const VALID_NIMS = [
 ];
 
 export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: TerminalProps) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const resetToken = searchParams.get("resetToken");
+
     const [lines, setLines] = useState<string[]>([
         "Welcome to TeknikMatematika v0.0.6",
         "System initialized...",
@@ -29,13 +34,28 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     const [input, setInput] = useState("");
     const [step, setStep] = useState<LoginStep>("idle");
     const [credentials, setCredentials] = useState({ username: "", nim: "" });
-
     const [regData, setRegData] = useState({ username: "", nim: "", password: "" });
+    const [forgotData, setForgotData] = useState({ username: "", nim: "" });
 
     const inputRef = useRef<HTMLInputElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const isAtBottom = useRef(true);
+
+    // Check for reset token on mount
+    useEffect(() => {
+        if (resetToken) {
+            setStep("reset_password");
+            setLines(prev => [
+                ...prev,
+                "----------------------------------------",
+                "RESET PASSWORD MODE INITIATED",
+                "Secure token detected.",
+                "Please enter your new password.",
+                "----------------------------------------"
+            ]);
+        }
+    }, [resetToken]);
 
     useEffect(() => {
         if (isLoggedIn) {
@@ -94,6 +114,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 setStep("idle");
                 setCredentials({ username: "", nim: "" });
                 setRegData({ username: "", nim: "", password: "" });
+                setForgotData({ username: "", nim: "" });
             }
             setInput("");
             return;
@@ -111,14 +132,110 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                     ...prev,
                     "Initiating user creation protocol..."
                 ]);
+            } else if (command === "forgot password") {
+                setStep("forgot_nim");
+                setLines(prev => [
+                    ...prev,
+                    "Initiating password recovery protocol...",
+                    "Please enter your NIM."
+                ]);
             } else if (command === "help") {
-                setLines(prev => [...prev, "Available commands:", "  login       - Start authentication", "  create user - Register a new account", "  clear       - Clear terminal output", "  help        - Show this help message"]);
+                setLines(prev => [...prev, "Available commands:", "  login           - Start authentication", "  create user     - Register a new account", "  forgot password - Recover account", "  clear           - Clear terminal output", "  help            - Show this help message"]);
             } else if (command === "clear") {
                 setLines([]);
             } else {
                 setLines(prev => [...prev, `Command not found: ${command}`]);
             }
             setInput("");
+            return;
+        }
+
+        // Forgot Password Steps
+        if (step === "forgot_nim") {
+            const nim = command;
+            setForgotData(prev => ({ ...prev, nim }));
+            setLines(prev => [...prev, `> ${nim}`, "Enter your Username:"]);
+            setStep("forgot_username");
+            setInput("");
+            return;
+        }
+
+        if (step === "forgot_username") {
+            const username = command;
+            const updatedForgotData = { ...forgotData, username };
+            setForgotData(updatedForgotData);
+            setLines(prev => [...prev, `> ${username}`, "Verifying identity...", "Please wait..."]);
+            setStep("processing");
+            setInput("");
+
+            try {
+                const response = await fetch('/api/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedForgotData),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    setLines(prev => [
+                        ...prev,
+                        "Identity Verified.",
+                        "Recovery link has been sent to your email (simulated).",
+                        "Please check your inbox.",
+                        data.debugLink ? `[DEBUG] Link: ${data.debugLink}` : ""
+                    ]);
+                    setStep("idle");
+                } else {
+                    setLines(prev => [...prev, `Recovery Failed: ${data.message}`]);
+                    setStep("idle");
+                }
+            } catch (err: any) {
+                setLines(prev => [...prev, `System Error: ${err.message}`]);
+                setStep("idle");
+            }
+            return;
+        }
+
+        // Reset Password Step
+        if (step === "reset_password") {
+            const newPassword = command;
+            setLines(prev => [...prev, `> ********`, "Updating password...", "Please wait..."]);
+            setStep("processing");
+            setInput("");
+
+            try {
+                const response = await fetch('/api/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: resetToken, newPassword }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    setLines(prev => [
+                        ...prev,
+                        "Password updated successfully.",
+                        "Redirecting to login...",
+                    ]);
+                    setTimeout(() => {
+                        router.push('/'); // Clear query params
+                        setStep("idle");
+                        setLines(prev => [...prev, "Please login with your new password."]);
+                    }, 2000);
+                } else {
+                    setLines(prev => [...prev, `Update Failed: ${data.message}`]);
+                    // If failed, maybe token expired, go back to idle
+                    setTimeout(() => {
+                        router.push('/');
+                        setStep("idle");
+                    }, 2000);
+                }
+            } catch (err: any) {
+                setLines(prev => [...prev, `System Error: ${err.message}`]);
+                setStep("idle");
+            }
             return;
         }
 
@@ -276,6 +393,9 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             case "reg_nim": return "Enter your NIM:";
             case "reg_username": return "Username:";
             case "reg_password": return "Password:";
+            case "forgot_nim": return "Enter your NIM:";
+            case "forgot_username": return "Username:";
+            case "reset_password": return "New Password:";
             case "nim": return "NIM:";
             case "password": return "password:";
             case "logged_in": return `${username}@TeknikMatematika:~$`;
@@ -339,7 +459,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                         <span className="text-blue-600 dark:text-blue-400 whitespace-nowrap">{getPrompt()}</span>
                         <input
                             ref={inputRef}
-                            type={step === "password" ? "password" : "text"}
+                            type={step === "password" || step === "reg_password" || step === "reset_password" ? "password" : "text"}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             className="flex-1 bg-transparent border-none outline-none text-foreground focus:ring-0 p-0"

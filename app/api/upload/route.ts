@@ -3,10 +3,10 @@ import { supabase } from "@/lib/supabase";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { username, url, type, title, description } = body;
+        const { username, url, type, title, description, media } = body;
 
-        if (!url || !username) {
-            return Response.json({ success: false, message: "Missing url or username" }, { status: 400 });
+        if ((!url && (!media || media.length === 0)) || !username) {
+            return Response.json({ success: false, message: "Missing media or username" }, { status: 400 });
         }
 
         // Find user
@@ -25,10 +25,11 @@ export async function POST(request: Request) {
             .from('Upload')
             .insert([
                 {
-                    url,
-                    type,
+                    url: url || (media && media[0]?.url),
+                    type: type || (media && media[0]?.type),
                     title,
                     description,
+                    media,
                     userId: user.id
                 }
             ])

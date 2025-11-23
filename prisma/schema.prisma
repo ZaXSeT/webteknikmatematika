@@ -11,10 +11,12 @@ model User {
   id       Int       @id @default(autoincrement())
   username String    @unique
   nim      String    @unique
-  password String
-  uploads  Upload[]
-  likes    Like[]
-  comments Comment[]
+  password         String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  uploads          Upload[]
+  likes            Like[]
+  comments         Comment[]
 }
 
 model Upload {
@@ -26,6 +28,7 @@ model Upload {
   createdAt   DateTime  @default(now())
   userId      Int
   user        User      @relation(fields: [userId], references: [id])
+  media       Json?
   likes       Like[]
   comments    Comment[]
 }

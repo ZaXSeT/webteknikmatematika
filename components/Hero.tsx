@@ -2,7 +2,7 @@
 
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { ArrowDown } from "lucide-react";
-import { useRef } from "react";
+import { useRef, Suspense } from "react";
 import Terminal from "./Terminal";
 
 interface HeroProps {
@@ -124,12 +124,14 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                     transition={{ duration: 0.8, delay: 0.4 }}
                     className="w-full max-w-2xl mx-auto md:ml-auto backdrop-blur-md bg-white/10 dark:bg-transparent rounded-xl border border-white/20 dark:border-none shadow-2xl"
                 >
-                    <Terminal
-                        onLogin={onLogin}
-                        onLogout={onLogout}
-                        isLoggedIn={isLoggedIn}
-                        username={username}
-                    />
+                    <Suspense fallback={<div className="w-full h-[500px] bg-black/60 rounded-xl animate-pulse" />}>
+                        <Terminal
+                            onLogin={onLogin}
+                            onLogout={onLogout}
+                            isLoggedIn={isLoggedIn}
+                            username={username}
+                        />
+                    </Suspense>
                 </motion.div>
             </div>
 

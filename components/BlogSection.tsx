@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, X, Heart, MessageCircle, Send, Trash2, Edit2, Save } from "lucide-react";
+import { ArrowRight, X, Heart, MessageCircle, Send, Trash2, Edit2, Save, ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
@@ -28,6 +28,7 @@ export default function BlogSection({
     const [uploads, setUploads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
     const [commentText, setCommentText] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState("");
@@ -98,6 +99,31 @@ export default function BlogSection({
 
             window.addEventListener('wheel', preventDefault, { passive: false });
             window.addEventListener('touchmove', preventDefault, { passive: false });
+
+            // Keyboard Navigation
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "ArrowRight") {
+                    if (selectedPost.media && currentMediaIndex < selectedPost.media.length - 1) {
+                        setCurrentMediaIndex(prev => prev + 1);
+                    }
+                } else if (e.key === "ArrowLeft") {
+                    if (currentMediaIndex > 0) {
+                        setCurrentMediaIndex(prev => prev - 1);
+                    }
+                } else if (e.key === "Escape") {
+                    setSelectedPost(null);
+                }
+            };
+            window.addEventListener('keydown', handleKeyDown);
+
+            return () => {
+                document.body.style.overflow = 'unset';
+                document.documentElement.style.overflow = 'unset';
+                if ((window as any).lenis) (window as any).lenis.start();
+                window.removeEventListener('wheel', preventDefault);
+                window.removeEventListener('touchmove', preventDefault);
+                window.removeEventListener('keydown', handleKeyDown);
+            };
         } else {
             document.body.style.overflow = 'unset';
             document.documentElement.style.overflow = 'unset';
@@ -106,15 +132,7 @@ export default function BlogSection({
             window.removeEventListener('wheel', preventDefault);
             window.removeEventListener('touchmove', preventDefault);
         }
-
-        return () => {
-            document.body.style.overflow = 'unset';
-            document.documentElement.style.overflow = 'unset';
-            if ((window as any).lenis) (window as any).lenis.start();
-            window.removeEventListener('wheel', preventDefault);
-            window.removeEventListener('touchmove', preventDefault);
-        };
-    }, [selectedPost]);
+    }, [selectedPost, currentMediaIndex]);
 
     const fetchUploads = async () => {
         try {
@@ -341,7 +359,10 @@ export default function BlogSection({
                         {displayedUploads.map((upload, index) => (
                             <motion.article
                                 key={upload.id}
-                                onClick={() => setSelectedPost(upload)}
+                                onClick={() => {
+                                    setSelectedPost(upload);
+                                    setCurrentMediaIndex(0);
+                                }}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
@@ -364,6 +385,11 @@ export default function BlogSection({
                                             alt={upload.title || "User upload"}
                                             className={`w-full ${forceSquare ? 'h-full object-cover' : 'h-auto object-contain'} transition-transform duration-700 group-hover:scale-105`}
                                         />
+                                    )}
+                                    {upload.media && upload.media.length > 1 && (
+                                        <div className="absolute top-2 right-2 p-1.5 bg-black/50 rounded-full text-white backdrop-blur-sm">
+                                            <Layers size={14} />
+                                        </div>
                                     )}
                                 </div>
                                 <h3 className="text-sm font-bold mb-1 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight text-foreground">
@@ -392,15 +418,97 @@ export default function BlogSection({
                         className="bg-background rounded-3xl overflow-hidden w-full max-w-6xl h-[85vh] flex flex-col md:flex-row shadow-2xl border border-border"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="md:w-2/3 bg-black flex items-center justify-center relative h-full">
-                            {selectedPost.type.startsWith('video') ? (
-                                <video src={selectedPost.url} controls className="w-full h-full object-contain" />
-                            ) : (
-                                <img src={selectedPost.url} alt={selectedPost.title} className="w-full h-full object-contain" />
+                        <div className="md:w-2/3 bg-black flex items-center justify-center relative h-full overflow-hidden">
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={currentMediaIndex}
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="w-full h-full flex items-center justify-center cursor-pointer"
+                                    drag="x"
+                                    dragConstraints={{ left: 0, right: 0 }}
+                                    dragElastic={0.2}
+                                    onDragEnd={(e, { offset, velocity }) => {
+                                        const swipe = offset.x;
+                                        if (swipe < -50 && (selectedPost.media ? currentMediaIndex < selectedPost.media.length - 1 : false)) {
+                                            setCurrentMediaIndex(prev => prev + 1);
+                                        } else if (swipe > 50 && currentMediaIndex > 0) {
+                                            setCurrentMediaIndex(prev => prev - 1);
+                                        }
+                                    }}
+                                    onClick={(e) => {
+                                        // Navigate on click (left/right side)
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const x = e.clientX - rect.left;
+                                        if (x > rect.width / 2) {
+                                            if (selectedPost.media && currentMediaIndex < selectedPost.media.length - 1) {
+                                                setCurrentMediaIndex(prev => prev + 1);
+                                            }
+                                        } else {
+                                            if (currentMediaIndex > 0) {
+                                                setCurrentMediaIndex(prev => prev - 1);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    {(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).type.startsWith('video') ? (
+                                        <video
+                                            src={(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).url}
+                                            controls
+                                            className="w-full h-full object-contain"
+                                        />
+                                    ) : (
+                                        <img
+                                            src={(selectedPost.media ? selectedPost.media[currentMediaIndex] : selectedPost).url}
+                                            alt={selectedPost.title}
+                                            className="w-full h-full object-contain pointer-events-none"
+                                        />
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+
+                            {/* Navigation Buttons */}
+                            {selectedPost.media && selectedPost.media.length > 1 && (
+                                <>
+                                    {currentMediaIndex > 0 && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentMediaIndex(prev => prev - 1);
+                                            }}
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10"
+                                        >
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                    )}
+                                    {currentMediaIndex < selectedPost.media.length - 1 && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setCurrentMediaIndex(prev => prev + 1);
+                                            }}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10"
+                                        >
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    )}
+                                    {/* Dots Indicator */}
+                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                        {selectedPost.media.map((_: any, idx: number) => (
+                                            <div
+                                                key={idx}
+                                                className={`w-2 h-2 rounded-full transition-all ${idx === currentMediaIndex ? "bg-white w-4" : "bg-white/50"}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
                             )}
+
                             <button
                                 onClick={() => setSelectedPost(null)}
-                                className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden"
+                                className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden z-20"
                             >
                                 <X size={20} />
                             </button>

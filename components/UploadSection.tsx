@@ -55,7 +55,7 @@ export default function UploadSection({ username }: UploadSectionProps) {
 
             await ffmpeg.writeFile(inputName, await fetchFile(file));
 
-            ffmpeg.on('progress', ({ progress }) => {
+            ffmpeg.on('progress', ({ progress }: { progress: number }) => {
                 setCompressionProgress(Math.round(progress * 100));
                 setUploadStatus(`Compressing video: ${Math.round(progress * 100)}%`);
             });

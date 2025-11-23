@@ -16,7 +16,7 @@ interface BlogSectionProps {
 }
 
 export default function BlogSection({
-    username,
+    username: propUsername,
     limit,
     showViewAll = true,
     hideHeader = false,
@@ -24,6 +24,7 @@ export default function BlogSection({
     gridClassName = "columns-2 md:columns-3 lg:columns-4 gap-4",
     forceSquare = false
 }: BlogSectionProps) {
+    const [currentUsername, setCurrentUsername] = useState<string | undefined>(propUsername);
     const [uploads, setUploads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
@@ -32,6 +33,23 @@ export default function BlogSection({
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDescription] = useState("");
     const commentsEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (propUsername) {
+            setCurrentUsername(propUsername);
+        } else {
+            // Fallback: Check localStorage if prop is missing
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    setCurrentUsername(user.username);
+                } catch (e) {
+                    console.error("Failed to parse user in BlogSection", e);
+                }
+            }
+        }
+    }, [propUsername]);
 
     const scrollToBottom = () => {
         commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,7 +123,7 @@ export default function BlogSection({
             const res = await fetch(`/api/posts/${selectedPost.id}`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
+                body: JSON.stringify({ username: currentUsername })
             });
             const data = await res.json();
             if (data.success) {
@@ -125,7 +143,7 @@ export default function BlogSection({
             const res = await fetch(`/api/posts/${selectedPost.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, title: editTitle, description: editDescription })
+                body: JSON.stringify({ username: currentUsername, title: editTitle, description: editDescription })
             });
             const data = await res.json();
             if (data.success) {
@@ -144,12 +162,12 @@ export default function BlogSection({
 
     const handleLike = async (e: React.MouseEvent, post: any) => {
         e.stopPropagation();
-        if (!username) return alert("Login to like!");
+        if (!currentUsername) return alert("Login to like!");
 
-        const isLiked = post.likes?.some((l: any) => l.user?.username === username);
+        const isLiked = post.likes?.some((l: any) => l.user?.username === currentUsername);
         const newLikes = isLiked
-            ? post.likes.filter((l: any) => l.user?.username !== username)
-            : [...(post.likes || []), { user: { username } }];
+            ? post.likes.filter((l: any) => l.user?.username !== currentUsername)
+            : [...(post.likes || []), { user: { username: currentUsername } }];
 
         const optimisticPost = { ...post, likes: newLikes };
 
@@ -160,7 +178,7 @@ export default function BlogSection({
             const res = await fetch(`/api/posts/${post.id}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
+                body: JSON.stringify({ username: currentUsername })
             });
             const data = await res.json();
 
@@ -178,7 +196,7 @@ export default function BlogSection({
 
     const handleComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!username) return alert("Login to comment!");
+        if (!currentUsername) return alert("Login to comment!");
         if (!commentText.trim() || !selectedPost) return;
 
         const text = commentText;
@@ -188,7 +206,7 @@ export default function BlogSection({
             id: Date.now(),
             text: text,
             createdAt: new Date().toISOString(),
-            user: { username }
+            user: { username: currentUsername }
         };
 
         const optimisticPost = {
@@ -203,7 +221,7 @@ export default function BlogSection({
             const res = await fetch(`/api/posts/${selectedPost.id}/comment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, text })
+                body: JSON.stringify({ username: currentUsername, text })
             });
             const data = await res.json();
 
@@ -367,7 +385,7 @@ export default function BlogSection({
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {(username === selectedPost.user?.username || username === 'zackysetiawan') && (
+                                    {(currentUsername === selectedPost.user?.username || currentUsername === 'zackysetiawan') && (
                                         <>
                                             {isEditing ? (
                                                 <button onClick={handleUpdate} className="text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 p-2 rounded-full transition-colors">
@@ -447,14 +465,14 @@ export default function BlogSection({
                                         <motion.div
                                             initial={false}
                                             animate={{
-                                                scale: selectedPost.likes?.some((l: any) => l.user?.username === username) ? [1, 1.2, 1] : 1,
-                                                color: selectedPost.likes?.some((l: any) => l.user?.username === username) ? "#ef4444" : "currentColor"
+                                                scale: selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? [1, 1.2, 1] : 1,
+                                                color: selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? "#ef4444" : "currentColor"
                                             }}
                                             transition={{ duration: 0.3 }}
                                         >
                                             <Heart
                                                 size={24}
-                                                className={selectedPost.likes?.some((l: any) => l.user?.username === username) ? "fill-red-500 stroke-red-500" : "stroke-current"}
+                                                className={selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? "fill-red-500 stroke-red-500" : "stroke-current"}
                                             />
                                         </motion.div>
                                         <span className="font-medium text-sm">{selectedPost.likes?.length || 0} likes</span>
@@ -471,14 +489,14 @@ export default function BlogSection({
                                             type="text"
                                             value={commentText}
                                             onChange={(e) => setCommentText(e.target.value)}
-                                            placeholder={username ? "Add a comment..." : "Login to comment"}
-                                            disabled={!username}
+                                            placeholder={currentUsername ? "Add a comment..." : "Login to comment"}
+                                            disabled={!currentUsername}
                                             className="w-full bg-muted border-none rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-blue-100 focus:bg-background transition-all outline-none placeholder:text-muted-foreground text-foreground"
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        disabled={!username || !commentText.trim()}
+                                        disabled={!currentUsername || !commentText.trim()}
                                         className="p-3 bg-blue-600 text-white rounded-full disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 shadow-sm"
                                     >
                                         <Send size={18} className={commentText.trim() ? "ml-0.5" : ""} />

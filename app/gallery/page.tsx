@@ -7,6 +7,7 @@ import Link from "next/link";
 
 export default function GalleryPage() {
     const [username, setUsername] = useState<string | undefined>(undefined);
+    const [isUserLoaded, setIsUserLoaded] = useState(false);
 
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
@@ -18,6 +19,7 @@ export default function GalleryPage() {
                 console.error("Failed to parse user", e);
             }
         }
+        setIsUserLoaded(true);
     }, []);
 
     return (

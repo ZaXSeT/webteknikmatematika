@@ -443,7 +443,7 @@ export default function BlogSection({
                                     animate={{ x: `-${currentMediaIndex * 100}%` }}
                                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     drag={selectedPost.media && selectedPost.media.length > 1 ? "x" : false}
-                                    dragElastic={1}
+                                    dragElastic={0}
                                     onDragEnd={(e, { offset, velocity }) => {
                                         const swipe = offset.x;
                                         const threshold = 50; // Reduced threshold for easier swipe

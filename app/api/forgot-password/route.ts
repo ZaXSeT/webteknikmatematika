@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         }
 
         // Determine Origin for Link
-        const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const origin = 'https://web-teknik-matematika.vercel.app';
         const resetLink = `${origin}?resetToken=${resetToken}`;
 
         // Email Construction

@@ -61,11 +61,16 @@ export default function BackgroundMusic() {
             }
         };
 
-        window.addEventListener('click', handleInteraction, { once: true });
+        // Listen to multiple events to catch the first interaction
+        ['click', 'scroll', 'keydown', 'touchstart'].forEach(event => {
+            window.addEventListener(event, handleInteraction, { once: true });
+        });
 
         return () => {
             clearInterval(interval);
-            window.removeEventListener('click', handleInteraction);
+            ['click', 'scroll', 'keydown', 'touchstart'].forEach(event => {
+                window.removeEventListener(event, handleInteraction);
+            });
         };
     }, []);
 

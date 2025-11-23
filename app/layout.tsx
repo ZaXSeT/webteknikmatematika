@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PixelFlow - Share Your Visual Story",
+  title: "TeknikMatematika",
   description: "A premium platform for uploading images and GIFs with a smooth experience.",
 };
 

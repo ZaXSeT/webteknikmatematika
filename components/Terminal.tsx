@@ -13,6 +13,13 @@ interface TerminalProps {
 
 type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "registration" | "idle";
 
+const VALID_NIMS = [
+    "03082240018", "03082240002", "03082240008", "03082240017", "03082240014",
+    "03082240005", "03082240004", "03082240024", "03082240015", "03082240007",
+    "03082240003", "03082240012", "03082240013", "03082240025", "03082240028",
+    "03082240020", "03082240006", "03082240022", "03082240009"
+];
+
 export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: TerminalProps) {
     const [lines, setLines] = useState<string[]>([
         "Welcome to TeknikMatematika v0.0.6",
@@ -123,6 +130,20 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
 
             if (nimMatch) {
                 const newNim = nimMatch[1].replace(/;$/, '').trim();
+
+                if (!VALID_NIMS.includes(newNim)) {
+                    setLines(prev => [
+                        ...prev,
+                        `> ${command}`,
+                        `Error: NIM '${newNim}' is not registered in the database.`,
+                        "Registration aborted."
+                    ]);
+                    setStep("idle");
+                    setRegData({ username: "", nim: "", password: "" });
+                    setInput("");
+                    return;
+                }
+
                 setRegData(prev => ({ ...prev, nim: newNim }));
                 setLines(prev => [...prev, `> ${command}`, `Registration: NIM set to '${newNim}'.`]);
                 setInput("");

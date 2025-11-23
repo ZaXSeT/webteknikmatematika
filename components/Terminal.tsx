@@ -286,7 +286,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
                     <TerminalIcon size={12} />
-                    <span>bash — 80x24</span>
+                    <span>command goon — 80x24</span>
                 </div>
             </div>
 

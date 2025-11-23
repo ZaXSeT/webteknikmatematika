@@ -8,8 +8,6 @@ export default function BackgroundMusic() {
     const [isMuted, setIsMuted] = useState(false);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    const [showOverlay, setShowOverlay] = useState(true); // Default true until we check autoplay
-
     // Local music file
     const musicUrl = "/music.mp3";
 
@@ -18,32 +16,38 @@ export default function BackgroundMusic() {
             audioRef.current.volume = 0.3;
         }
 
-        // Try to play automatically
         const playAudio = async () => {
             if (audioRef.current) {
                 try {
                     await audioRef.current.play();
                     setIsPlaying(true);
-                    setShowOverlay(false); // If successful, no need for overlay
                 } catch (err) {
-                    console.log("Autoplay blocked by browser, showing overlay");
+                    console.log("Autoplay blocked by browser. Waiting for user interaction.");
                     setIsPlaying(false);
-                    setShowOverlay(true); // If blocked, show overlay to force click
+                    // Add listeners for first interaction
+                    const startAudio = () => {
+                        if (audioRef.current) {
+                            audioRef.current.play().then(() => {
+                                setIsPlaying(true);
+                                // Remove listeners once played
+                                document.removeEventListener('click', startAudio);
+                                document.removeEventListener('keydown', startAudio);
+                                document.removeEventListener('touchstart', startAudio);
+                                document.removeEventListener('scroll', startAudio);
+                            }).catch(console.error);
+                        }
+                    };
+
+                    document.addEventListener('click', startAudio);
+                    document.addEventListener('keydown', startAudio);
+                    document.addEventListener('touchstart', startAudio);
+                    document.addEventListener('scroll', startAudio);
                 }
             }
         };
 
         playAudio();
     }, []);
-
-    const handleEnter = () => {
-        if (audioRef.current) {
-            audioRef.current.play().then(() => {
-                setIsPlaying(true);
-                setShowOverlay(false);
-            }).catch(console.error);
-        }
-    };
 
     const togglePlay = () => {
         if (audioRef.current) {
@@ -66,23 +70,6 @@ export default function BackgroundMusic() {
 
     return (
         <>
-            {/* Intro Overlay - Only shows if autoplay is blocked */}
-            {showOverlay && (
-                <div
-                    onClick={handleEnter}
-                    className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center cursor-pointer transition-opacity duration-700"
-                >
-                    <div className="text-center animate-pulse">
-                        <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tighter">
-                            TeknikMatematika
-                        </h1>
-                        <p className="text-muted-foreground text-sm uppercase tracking-widest">
-                            Click anywhere to enter
-                        </p>
-                    </div>
-                </div>
-            )}
-
             <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
                 <audio
                     ref={audioRef}

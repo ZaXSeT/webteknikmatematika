@@ -86,6 +86,8 @@ export default function BackgroundMusic() {
                     src={musicUrl}
                     loop
                     autoPlay
+                    playsInline
+                    preload="auto"
                     onEnded={() => setIsPlaying(false)}
                 />
 

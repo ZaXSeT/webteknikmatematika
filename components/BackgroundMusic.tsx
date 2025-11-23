@@ -23,32 +23,11 @@ export default function BackgroundMusic() {
                 try {
                     await audioRef.current.play();
                     setIsPlaying(true);
-                    // Remove listeners if play successful
-                    removeInteractionListeners();
                 } catch (err) {
                     // console.log("Autoplay blocked. Retrying...");
                 }
             }
         };
-
-        const handleInteraction = () => {
-            attemptPlay();
-        };
-
-        const removeInteractionListeners = () => {
-            window.removeEventListener('click', handleInteraction);
-            window.removeEventListener('scroll', handleInteraction);
-            window.removeEventListener('mousemove', handleInteraction);
-            window.removeEventListener('keydown', handleInteraction);
-            window.removeEventListener('touchstart', handleInteraction);
-        };
-
-        // Add listeners for any interaction to trigger play (browser policy workaround)
-        window.addEventListener('click', handleInteraction);
-        window.addEventListener('scroll', handleInteraction);
-        window.addEventListener('mousemove', handleInteraction);
-        window.addEventListener('keydown', handleInteraction);
-        window.addEventListener('touchstart', handleInteraction);
 
         // Try immediately
         attemptPlay();
@@ -60,13 +39,11 @@ export default function BackgroundMusic() {
             } else if (audioRef.current && !audioRef.current.paused) {
                 clearInterval(interval);
                 setIsPlaying(true);
-                removeInteractionListeners();
             }
         }, 2000);
 
         return () => {
             clearInterval(interval);
-            removeInteractionListeners();
         };
     }, []);
 

@@ -321,7 +321,7 @@ export default function BlogSection({
                         <div>
                             <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Latest Uploads</h2>
                             <p className="text-muted-foreground max-w-md">
-                                Check out what the community has been sharing.
+                                Check out what's new.
                             </p>
                         </div>
                         {showViewAll && (

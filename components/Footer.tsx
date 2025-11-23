@@ -179,7 +179,9 @@ export default function Footer({ isDark = true }: FooterProps) {
 
                 {/* Discord Icon */}
                 <a
-                    href="#"
+                    href="https://discord.gg/fZhv7sztJA"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={`group relative p-2 rounded-lg border transition-all duration-300 ${isDark ? 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800' : 'bg-white/50 border-white/50 hover:border-white hover:bg-white'}`}
                 >
                     <DiscordIcon className={`w-5 h-5 transition-colors ${isDark ? 'text-zinc-400 group-hover:text-white' : 'text-slate-500 group-hover:text-blue-500'}`} />

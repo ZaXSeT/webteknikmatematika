@@ -10,14 +10,9 @@ export default function GalleryPage() {
     const [isUserLoaded, setIsUserLoaded] = useState(false);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            try {
-                const user = JSON.parse(storedUser);
-                setUsername(user.username);
-            } catch (e) {
-                console.error("Failed to parse user", e);
-            }
+        const storedUsername = localStorage.getItem("username");
+        if (storedUsername) {
+            setUsername(storedUsername);
         }
         setIsUserLoaded(true);
     }, []);

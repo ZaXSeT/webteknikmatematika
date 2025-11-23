@@ -37,16 +37,9 @@ export default function BlogSection({
     // Initial check from localStorage on mount
     useEffect(() => {
         const checkLocalStorage = () => {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    if (user.username) {
-                        setCurrentUsername(user.username);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse user in BlogSection", e);
-                }
+            const storedUsername = localStorage.getItem("username");
+            if (storedUsername) {
+                setCurrentUsername(storedUsername);
             }
         };
 
@@ -55,7 +48,7 @@ export default function BlogSection({
         // Listen for storage events (cross-tab)
         window.addEventListener('storage', checkLocalStorage);
 
-        // Polling fallback: Check every 1s if user is still missing (fixes SPA navigation issues)
+        // Polling fallback: Check every 1s if user is still missing
         const interval = setInterval(() => {
             if (!currentUsername) {
                 checkLocalStorage();
@@ -190,13 +183,10 @@ export default function BlogSection({
         // Fail-safe: Check localStorage one last time if state is missing
         let activeUser = currentUsername;
         if (!activeUser) {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    activeUser = user.username;
-                    setCurrentUsername(activeUser);
-                } catch (e) { }
+            const storedUsername = localStorage.getItem("username");
+            if (storedUsername) {
+                activeUser = storedUsername;
+                setCurrentUsername(activeUser);
             }
         }
 
@@ -238,13 +228,10 @@ export default function BlogSection({
         // Fail-safe: Check localStorage one last time
         let activeUser = currentUsername;
         if (!activeUser) {
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                try {
-                    const user = JSON.parse(storedUser);
-                    activeUser = user.username;
-                    setCurrentUsername(activeUser);
-                } catch (e) { }
+            const storedUsername = localStorage.getItem("username");
+            if (storedUsername) {
+                activeUser = storedUsername;
+                setCurrentUsername(activeUser);
             }
         }
 

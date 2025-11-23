@@ -21,15 +21,30 @@ export async function POST(request: Request) {
         }
 
         // Save to DB
+        // WORKAROUND: Since we can't run migrations to add a 'media' column without DATABASE_URL,
+        // we will store the media array as a JSON string in the 'url' column and set type to 'gallery'.
+
+        let finalUrl = url;
+        let finalType = type;
+
+        if (media && media.length > 0) {
+            finalUrl = JSON.stringify(media);
+            finalType = 'gallery';
+        } else {
+            // Fallback for single file upload if media array is not used but url/type are passed directly
+            finalUrl = url || (media && media[0]?.url);
+            finalType = type || (media && media[0]?.type);
+        }
+
         const { data: upload, error: dbError } = await supabase
             .from('Upload')
             .insert([
                 {
-                    url: url || (media && media[0]?.url),
-                    type: type || (media && media[0]?.type),
+                    url: finalUrl,
+                    type: finalType,
                     title,
                     description,
-                    media,
+                    // media, // Removing this as the column doesn't exist
                     userId: user.id
                 }
             ])

@@ -139,7 +139,25 @@ export default function BlogSection({
             const res = await fetch('/api/uploads');
             const data = await res.json();
             if (data.success) {
-                setUploads(data.uploads);
+                // Parse 'gallery' types
+                const parsedUploads = data.uploads.map((upload: any) => {
+                    if (upload.type === 'gallery') {
+                        try {
+                            const mediaItems = JSON.parse(upload.url);
+                            return {
+                                ...upload,
+                                media: mediaItems,
+                                url: mediaItems[0]?.url, // Default to first item for preview
+                                type: mediaItems[0]?.type // Default to first item type for preview
+                            };
+                        } catch (e) {
+                            console.error("Failed to parse gallery media", e);
+                            return upload;
+                        }
+                    }
+                    return upload;
+                });
+                setUploads(parsedUploads);
             }
         } catch (error) {
             console.error("Failed to fetch uploads", error);

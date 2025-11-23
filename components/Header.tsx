@@ -38,7 +38,7 @@ export default function Header({ isDark, toggleTheme }: HeaderProps) {
                     </span>
                 </a>
                 <nav className="hidden md:flex gap-10">
-                    {["Home", "Upload", "Blog"].map((item) => (
+                    {["Home", "Upload", "Media"].map((item) => (
                         <a
                             key={item}
                             href={`#${item.toLowerCase()}`}

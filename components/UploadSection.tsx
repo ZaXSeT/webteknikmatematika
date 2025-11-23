@@ -194,7 +194,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
             setDescription("");
 
             setTimeout(() => {
-                sessionStorage.setItem("scrollTo", "blog");
+                sessionStorage.setItem("scrollTo", "media");
                 window.location.reload();
             }, 1000);
         } catch (error: any) {

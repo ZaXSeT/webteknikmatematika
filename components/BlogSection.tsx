@@ -308,7 +308,7 @@ export default function BlogSection({
     const displayedUploads = limit ? uploads.slice(0, limit) : uploads;
 
     return (
-        <section id="blog" className={`bg-background text-foreground ${hideHeader ? '' : 'py-24'}`}>
+        <section id="media" className={`bg-background text-foreground ${hideHeader ? '' : 'py-24'}`}>
             <div className={fullWidth ? "w-full px-4" : "container mx-auto px-4"}>
                 {!hideHeader && (
                     <motion.div

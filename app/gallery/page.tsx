@@ -32,7 +32,7 @@ export default function GalleryPage() {
                     <ArrowLeft size={20} /> Back to Home
                 </Link>
                 <div className="mb-6">
-                    <h1 className="text-4xl font-bold tracking-tight text-foreground">Community Feed</h1>
+                    <h1 className="text-4xl font-bold tracking-tight text-foreground">Recent Uploads</h1>
                     <p className="text-muted-foreground mt-2">Share your moments and see what others are up to.</p>
                 </div>
             </div>

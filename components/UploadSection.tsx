@@ -214,144 +214,121 @@ export default function UploadSection({ username }: UploadSectionProps) {
     const opacity = useTransform(scrollYProgress, [0, 0.2, 0.8, 1], [0, 1, 1, 0]);
 
     return (
-        <section ref={ref} id="upload" className="py-24 bg-background text-foreground relative overflow-hidden">
-            <motion.div
-                style={{ y, opacity }}
-                className="absolute top-0 left-0 w-full h-full pointer-events-none z-0"
-            >
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-            </motion.div>
-
-            <div className="container mx-auto px-4 relative z-10">
+        <div className="container mx-auto px-4 relative z-10">
+            <div className="max-w-4xl mx-auto">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.6 }}
-                    className="text-center mb-16"
-                >
-                    <h2 className="text-4xl md:text-5xl font-bold mb-4">Upload anything here</h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Drag and drop your media here.
-                    </p>
-                </motion.div>
-
-                <div className="max-w-4xl mx-auto">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5 }}
-                        className={`
+                    transition={{ duration: 0.5 }}
+                    className={`
               relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300
               ${isDragging
-                                ? "border-blue-500 bg-blue-500/10"
-                                : "border-border bg-muted/30 hover:border-muted-foreground/50 hover:bg-muted/50"
-                            }
+                            ? "border-blue-500 bg-blue-500/10"
+                            : "border-border bg-muted/30 hover:border-muted-foreground/50 hover:bg-muted/50"
+                        }
             `}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                    >
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*,video/*"
-                            onChange={handleFileSelect}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            disabled={isUploading}
-                        />
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        onChange={handleFileSelect}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        disabled={isUploading}
+                    />
 
-                        <div className="flex flex-col items-center gap-4 pointer-events-none">
-                            <div className="p-4 rounded-full bg-muted text-blue-600 dark:text-blue-400">
-                                <Upload size={32} />
+                    <div className="flex flex-col items-center gap-4 pointer-events-none">
+                        <div className="p-4 rounded-full bg-muted text-blue-600 dark:text-blue-400">
+                            <Upload size={32} />
+                        </div>
+                        <div>
+                            <p className="text-xl font-medium mb-2">
+                                Drop your shit here or click to browse
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Support: PNG, JPG, GIF, MP4 and WEBP
+                            </p>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {files.length > 0 && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-12"
+                    >
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                            {files.map((file, index) => (
+                                <div key={index} className="relative group aspect-square rounded-xl overflow-hidden bg-muted">
+                                    {file.type.startsWith('video/') ? (
+                                        <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            alt="preview"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                            onClick={() => removeFile(index)}
+                                            className="p-2 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-colors"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                                        <p className="text-xs text-white truncate">{file.name}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="max-w-md mx-auto space-y-4 mb-8">
+                            <div>
+                                <label className="block text-sm font-medium text-muted-foreground mb-1 text-left">Title</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="Give your post a title..."
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
+                                />
                             </div>
                             <div>
-                                <p className="text-xl font-medium mb-2">
-                                    Drop your shit here or click to browse
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                    Support: PNG, JPG, GIF, MP4 and WEBP
-                                </p>
+                                <label className="block text-sm font-medium text-muted-foreground mb-1 text-left">Description</label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Tell us about your upload..."
+                                    rows={3}
+                                    className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                                />
                             </div>
                         </div>
+
+                        <div className="flex flex-col items-center gap-4">
+                            <button
+                                onClick={handleUpload}
+                                disabled={isUploading || !title.trim()}
+                                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-full font-medium transition-all hover:scale-105 active:scale-95"
+                            >
+                                {isUploading ? (isCompressing ? `Compressing ${compressionProgress}%...` : "Uploading...") : `Upload ${files.length} Files`}
+                            </button>
+                            {uploadStatus && (
+                                <p className={`text-sm ${uploadStatus.includes("failed") || uploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>
+                                    {uploadStatus}
+                                </p>
+                            )}
+                        </div>
                     </motion.div>
-
-                    {files.length > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-12"
-                        >
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                                {files.map((file, index) => (
-                                    <div key={index} className="relative group aspect-square rounded-xl overflow-hidden bg-muted">
-                                        {file.type.startsWith('video/') ? (
-                                            <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <img
-                                                src={URL.createObjectURL(file)}
-                                                alt="preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        )}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button
-                                                onClick={() => removeFile(index)}
-                                                className="p-2 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-colors"
-                                            >
-                                                <X size={20} />
-                                            </button>
-                                        </div>
-                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                                            <p className="text-xs text-white truncate">{file.name}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="max-w-md mx-auto space-y-4 mb-8">
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1 text-left">Title</label>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="Give your post a title..."
-                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-muted-foreground mb-1 text-left">Description</label>
-                                    <textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Tell us about your upload..."
-                                        rows={3}
-                                        className="w-full bg-muted/50 border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-4">
-                                <button
-                                    onClick={handleUpload}
-                                    disabled={isUploading || !title.trim()}
-                                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-full font-medium transition-all hover:scale-105 active:scale-95"
-                                >
-                                    {isUploading ? (isCompressing ? `Compressing ${compressionProgress}%...` : "Uploading...") : `Upload ${files.length} Files`}
-                                </button>
-                                {uploadStatus && (
-                                    <p className={`text-sm ${uploadStatus.includes("failed") || uploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>
-                                        {uploadStatus}
-                                    </p>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </div>
+                )}
             </div>
-        </section>
+        </div>
     );
 }

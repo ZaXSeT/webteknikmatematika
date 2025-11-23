@@ -447,12 +447,12 @@ export default function BlogSection({
                                     className="w-full h-full flex items-center justify-center cursor-pointer"
                                     drag="x"
                                     dragConstraints={{ left: 0, right: 0 }}
-                                    dragElastic={0.2}
+                                    dragElastic={1}
                                     onDragEnd={(e, { offset, velocity }) => {
                                         const swipe = offset.x;
-                                        if (swipe < -50 && (selectedPost.media ? currentMediaIndex < selectedPost.media.length - 1 : false)) {
+                                        if (swipe < -10 && (selectedPost.media ? currentMediaIndex < selectedPost.media.length - 1 : false)) {
                                             setCurrentMediaIndex(prev => prev + 1);
-                                        } else if (swipe > 50 && currentMediaIndex > 0) {
+                                        } else if (swipe > 10 && currentMediaIndex > 0) {
                                             setCurrentMediaIndex(prev => prev - 1);
                                         }
                                     }}

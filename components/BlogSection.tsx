@@ -34,20 +34,33 @@ export default function BlogSection({
     const [editDescription, setEditDescription] = useState("");
     const commentsEndRef = useRef<HTMLDivElement>(null);
 
+    // Initial check from localStorage on mount
     useEffect(() => {
-        if (propUsername) {
-            setCurrentUsername(propUsername);
-        } else {
-            // Fallback: Check localStorage if prop is missing
+        const checkLocalStorage = () => {
             const storedUser = localStorage.getItem("user");
             if (storedUser) {
                 try {
                     const user = JSON.parse(storedUser);
-                    setCurrentUsername(user.username);
+                    if (user.username) {
+                        setCurrentUsername(user.username);
+                    }
                 } catch (e) {
                     console.error("Failed to parse user in BlogSection", e);
                 }
             }
+        };
+
+        checkLocalStorage();
+
+        // Optional: Listen for storage events if user logs in/out in another tab
+        window.addEventListener('storage', checkLocalStorage);
+        return () => window.removeEventListener('storage', checkLocalStorage);
+    }, []);
+
+    // Sync with prop if it changes and is valid
+    useEffect(() => {
+        if (propUsername) {
+            setCurrentUsername(propUsername);
         }
     }, [propUsername]);
 
@@ -162,7 +175,21 @@ export default function BlogSection({
 
     const handleLike = async (e: React.MouseEvent, post: any) => {
         e.stopPropagation();
-        if (!currentUsername) return alert("Login to like!");
+
+        // Fail-safe: Check localStorage one last time if state is missing
+        let activeUser = currentUsername;
+        if (!activeUser) {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    activeUser = user.username;
+                    setCurrentUsername(activeUser);
+                } catch (e) { }
+            }
+        }
+
+        if (!activeUser) return alert("Login to like!");
 
         const isLiked = post.likes?.some((l: any) => l.user?.username === currentUsername);
         const newLikes = isLiked
@@ -196,7 +223,21 @@ export default function BlogSection({
 
     const handleComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!currentUsername) return alert("Login to comment!");
+
+        // Fail-safe: Check localStorage one last time
+        let activeUser = currentUsername;
+        if (!activeUser) {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    activeUser = user.username;
+                    setCurrentUsername(activeUser);
+                } catch (e) { }
+            }
+        }
+
+        if (!activeUser) return alert("Login to comment!");
         if (!commentText.trim() || !selectedPost) return;
 
         const text = commentText;

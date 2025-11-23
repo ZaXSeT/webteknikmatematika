@@ -442,7 +442,9 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90 overscroll-y-contain"
+                tabIndex={0}
+                style={{ scrollBehavior: "smooth" }}
+                className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90 outline-none"
                 onClick={(e) => {
                     // Prevent focus if selecting text
                     if (window.getSelection()?.toString()) return;

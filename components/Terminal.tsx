@@ -274,7 +274,22 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     return (
         <div
             className="w-full max-w-2xl mx-auto bg-white/40 dark:bg-black/60 rounded-xl overflow-hidden border border-border shadow-2xl backdrop-blur-md font-mono text-sm md:text-base"
-            onClick={() => inputRef.current?.focus()}
+            onClick={(e) => {
+                // Prevent focus if selecting text
+                if (window.getSelection()?.toString()) return;
+
+                // If clicking the scrollable container directly, check if it's on the scrollbar
+                if (scrollRef.current && e.target === scrollRef.current) {
+                    const rect = scrollRef.current.getBoundingClientRect();
+                    // Check if click is in the scrollbar area (right side)
+                    // clientWidth excludes scrollbar, so if click x is > left + clientWidth, it's on scrollbar/border
+                    if (e.clientX > rect.left + scrollRef.current.clientWidth) {
+                        return;
+                    }
+                }
+
+                inputRef.current?.focus();
+            }}
         >
             {/* Terminal Header */}
             <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">

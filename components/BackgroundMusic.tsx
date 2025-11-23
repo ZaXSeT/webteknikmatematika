@@ -12,36 +12,39 @@ export default function BackgroundMusic() {
     const musicUrl = "/music.mp3";
 
     useEffect(() => {
+        // Set volume immediately
         if (audioRef.current) {
             audioRef.current.volume = 0.3;
+            audioRef.current.currentTime = 0; // Ensure start from beginning on mount/refresh
         }
 
         const playAudio = async () => {
             if (audioRef.current) {
                 try {
+                    // Attempt immediate playback
                     await audioRef.current.play();
                     setIsPlaying(true);
                 } catch (err) {
-                    console.log("Autoplay blocked by browser. Waiting for user interaction.");
+                    console.log("Autoplay blocked. Waiting for interaction.");
                     setIsPlaying(false);
-                    // Add listeners for first interaction
+
+                    // Fallback: Play on ANY interaction
                     const startAudio = () => {
                         if (audioRef.current) {
                             audioRef.current.play().then(() => {
                                 setIsPlaying(true);
-                                // Remove listeners once played
-                                document.removeEventListener('click', startAudio);
-                                document.removeEventListener('keydown', startAudio);
-                                document.removeEventListener('touchstart', startAudio);
-                                document.removeEventListener('scroll', startAudio);
+                                // Cleanup listeners
+                                ['click', 'keydown', 'touchstart', 'scroll', 'mousemove'].forEach(event =>
+                                    document.removeEventListener(event, startAudio)
+                                );
                             }).catch(console.error);
                         }
                     };
 
-                    document.addEventListener('click', startAudio);
-                    document.addEventListener('keydown', startAudio);
-                    document.addEventListener('touchstart', startAudio);
-                    document.addEventListener('scroll', startAudio);
+                    // Add aggressive listeners
+                    ['click', 'keydown', 'touchstart', 'scroll', 'mousemove'].forEach(event =>
+                        document.addEventListener(event, startAudio, { once: true })
+                    );
                 }
             }
         };
@@ -75,6 +78,7 @@ export default function BackgroundMusic() {
                     ref={audioRef}
                     src={musicUrl}
                     loop
+                    autoPlay
                     onEnded={() => setIsPlaying(false)}
                 />
 

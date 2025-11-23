@@ -18,38 +18,33 @@ export default function BackgroundMusic() {
             audioRef.current.currentTime = 0; // Ensure start from beginning on mount/refresh
         }
 
-        const playAudio = async () => {
-            if (audioRef.current) {
+        const attemptPlay = async () => {
+            if (audioRef.current && audioRef.current.paused) {
                 try {
-                    // Attempt immediate playback
                     await audioRef.current.play();
                     setIsPlaying(true);
                 } catch (err) {
-                    console.log("Autoplay blocked. Waiting for interaction.");
-                    setIsPlaying(false);
-
-                    // Fallback: Play on ANY interaction
-                    const startAudio = () => {
-                        if (audioRef.current) {
-                            audioRef.current.play().then(() => {
-                                setIsPlaying(true);
-                                // Cleanup listeners
-                                ['click', 'keydown', 'touchstart', 'scroll', 'mousemove'].forEach(event =>
-                                    document.removeEventListener(event, startAudio)
-                                );
-                            }).catch(console.error);
-                        }
-                    };
-
-                    // Add aggressive listeners
-                    ['click', 'keydown', 'touchstart', 'scroll', 'mousemove'].forEach(event =>
-                        document.addEventListener(event, startAudio, { once: true })
-                    );
+                    console.log("Autoplay blocked. Retrying in background...");
                 }
             }
         };
 
-        playAudio();
+        // Try immediately
+        attemptPlay();
+
+        // Retry every 2 seconds indefinitely until it works
+        // This is the aggressive approach requested by the user
+        const interval = setInterval(() => {
+            if (audioRef.current && audioRef.current.paused) {
+                attemptPlay();
+            } else if (audioRef.current && !audioRef.current.paused) {
+                // Once playing, clear the interval
+                clearInterval(interval);
+                setIsPlaying(true);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const togglePlay = () => {

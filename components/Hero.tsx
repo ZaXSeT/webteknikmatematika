@@ -53,7 +53,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
             <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 <motion.div
                     style={{ y: textY, opacity: textOpacity }}
-                    className="text-left"
+                    className="text-center md:text-left"
                 >
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
@@ -71,7 +71,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.4 }}
-                        className="text-lg md:text-xl text-purple-900/80 dark:text-muted-foreground max-w-xl mb-10"
+                        className="text-lg md:text-xl text-purple-900/80 dark:text-muted-foreground max-w-xl mx-auto md:mx-0 mb-10"
                     >
                         Upload your images, videos, and GIFs
                     </motion.p>
@@ -80,6 +80,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.8, delay: 0.6 }}
+                        className="flex justify-center md:justify-start"
                     >
                         <AnimatePresence mode="wait">
                             {!isLoggedIn ? (

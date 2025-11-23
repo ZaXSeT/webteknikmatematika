@@ -249,7 +249,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                         viewport={{ once: true }}
                         transition={{ duration: 0.5 }}
                         className={`
-              relative border-2 border-dashed rounded-3xl p-12 text-center transition-all duration-300
+              relative border-2 border-dashed rounded-3xl p-6 md:p-12 text-center transition-all duration-300
               ${isDragging
                                 ? "border-blue-500 bg-blue-500/10"
                                 : "border-border bg-muted/30 hover:border-muted-foreground/50 hover:bg-muted/50"
@@ -357,6 +357,6 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                     )}
                 </div>
             </div>
-        </section>
+        </section >
     );
 }

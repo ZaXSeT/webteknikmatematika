@@ -316,11 +316,11 @@ export default function BlogSection({
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
-                        className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6"
+                        className="flex flex-col md:flex-row justify-between items-center md:items-end mb-10 md:mb-16 gap-6 text-center md:text-left"
                     >
                         <div>
                             <h2 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Latest Uploads</h2>
-                            <p className="text-muted-foreground max-w-md">
+                            <p className="text-muted-foreground max-w-md mx-auto md:mx-0">
                                 Check out what's new.
                             </p>
                         </div>

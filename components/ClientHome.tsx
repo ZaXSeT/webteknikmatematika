@@ -85,7 +85,7 @@ export default function ClientHome() {
                         exit={{ opacity: 0, height: 0 }}
                     >
                         <UploadSection username={username} />
-                        <BlogSection username={username} limit={9} fullWidth={true} gridClassName="grid grid-cols-2 md:grid-cols-3 gap-4" forceSquare={true} />
+                        <BlogSection username={username} limit={9} fullWidth={true} gridClassName="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" forceSquare={true} />
                         <Footer isDark={isDark} />
                     </motion.div>
                 )}

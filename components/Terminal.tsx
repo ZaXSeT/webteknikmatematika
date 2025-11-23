@@ -326,6 +326,8 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 }, 1000);
             } else if (command === "login") {
                 setLines(prev => [...prev, `Action denied: You are already logged in as ${username}.`]);
+            } else if (command === "forgot password") {
+                setLines(prev => [...prev, "Action denied: You are currently logged in.", "Please 'log out' to use the password recovery feature."]);
             } else if (command === "help") {
                 setLines(prev => [...prev, "Available commands:", "  log out - Sign out of the system", "  clear   - Clear terminal output", "  reset   - Reset terminal session", "  help    - Show this help message"]);
             } else if (command === "clear") {

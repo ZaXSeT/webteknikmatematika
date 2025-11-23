@@ -19,12 +19,22 @@ export default function BackgroundMusic() {
         }
 
         const attemptPlay = async () => {
-            if (audioRef.current && audioRef.current.paused) {
+            if (!audioRef.current) return;
+
+            // Strategy: Try unmuted first. If blocked, try muted.
+            try {
+                // 1. Try normal unmuted play
+                await audioRef.current.play();
+                setIsPlaying(true);
+            } catch (err) {
+                // 2. Fallback: Muted play (usually allowed by browsers)
                 try {
+                    audioRef.current.muted = true;
                     await audioRef.current.play();
                     setIsPlaying(true);
-                } catch (err) {
-                    // console.log("Autoplay blocked. Retrying...");
+                    setIsMuted(true); // Sync state
+                } catch (mutedErr) {
+                    // Both failed, will retry in interval
                 }
             }
         };
@@ -32,19 +42,21 @@ export default function BackgroundMusic() {
         // Try immediately
         attemptPlay();
 
-        // Retry every 2 seconds indefinitely until it works (aggressive fallback)
+        // Retry every 2 seconds
         const interval = setInterval(() => {
-            if (audioRef.current && audioRef.current.paused) {
-                attemptPlay();
-            } else if (audioRef.current && !audioRef.current.paused) {
-                clearInterval(interval);
-                setIsPlaying(true);
+            if (audioRef.current) {
+                if (audioRef.current.paused) {
+                    attemptPlay();
+                } else {
+                    // If playing, we can stop the interval
+                    // Optional: You could try to unmute here periodically, but that might interrupt playback
+                    clearInterval(interval);
+                    setIsPlaying(true);
+                }
             }
         }, 2000);
 
-        return () => {
-            clearInterval(interval);
-        };
+        return () => clearInterval(interval);
     }, []);
 
     const togglePlay = () => {

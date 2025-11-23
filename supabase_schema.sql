@@ -1,0 +1,36 @@
+-- Create User table
+CREATE TABLE IF NOT EXISTS "User" (
+  "id" SERIAL PRIMARY KEY,
+  "username" TEXT UNIQUE NOT NULL,
+  "nim" TEXT UNIQUE NOT NULL,
+  "password" TEXT NOT NULL
+);
+
+-- Create Upload table
+CREATE TABLE IF NOT EXISTS "Upload" (
+  "id" SERIAL PRIMARY KEY,
+  "url" TEXT NOT NULL,
+  "type" TEXT NOT NULL,
+  "title" TEXT,
+  "description" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "userId" INTEGER NOT NULL REFERENCES "User"("id") ON DELETE CASCADE
+);
+
+-- Create Like table
+CREATE TABLE IF NOT EXISTS "Like" (
+  "id" SERIAL PRIMARY KEY,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "userId" INTEGER NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "uploadId" INTEGER NOT NULL REFERENCES "Upload"("id") ON DELETE CASCADE,
+  UNIQUE("userId", "uploadId")
+);
+
+-- Create Comment table
+CREATE TABLE IF NOT EXISTS "Comment" (
+  "id" SERIAL PRIMARY KEY,
+  "text" TEXT NOT NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "userId" INTEGER NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "uploadId" INTEGER NOT NULL REFERENCES "Upload"("id") ON DELETE CASCADE
+);

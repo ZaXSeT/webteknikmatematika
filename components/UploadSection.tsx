@@ -61,28 +61,59 @@ export default function UploadSection({ username }: UploadSectionProps) {
         setUploadStatus("Uploading...");
 
         try {
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('username', username);
-                formData.append('title', title || file.name);
-                formData.append('description', description || `Uploaded by ${username}`);
+            // Import supabase client dynamically or use from lib if available
+            // Since this is a client component, we can import from @/lib/supabase if it's safe for client
+            // But let's check if @/lib/supabase is safe. It uses process.env.NEXT_PUBLIC_... so it is safe.
+            const { supabase } = await import("@/lib/supabase");
 
+            for (const file of files) {
+                // 1. Upload to Supabase Storage directly
+                const filename = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
+
+                const { data: uploadData, error: uploadError } = await supabase
+                    .storage
+                    .from('uploads')
+                    .upload(filename, file, {
+                        contentType: file.type,
+                        upsert: false
+                    });
+
+                if (uploadError) {
+                    throw new Error(`Storage Error: ${uploadError.message}`);
+                }
+
+                // 2. Get Public URL
+                const { data: { publicUrl } } = supabase
+                    .storage
+                    .from('uploads')
+                    .getPublicUrl(filename);
+
+                // 3. Save metadata to DB via API
                 const res = await fetch('/api/upload', {
                     method: 'POST',
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username,
+                        url: publicUrl,
+                        type: file.type,
+                        title: title || file.name,
+                        description: description || `Uploaded by ${username}`
+                    }),
                 });
 
+                const data = await res.json();
+
                 if (!res.ok) {
-                    throw new Error(`Failed to upload ${file.name}`);
+                    throw new Error(data.message || `Failed to save metadata for ${file.name}`);
                 }
             }
             setUploadStatus("Upload successful!");
             setFiles([]);
             setTitle("");
             setDescription("");
-            // Refresh the page or trigger a re-fetch of the blog section?
-            // For now, just clear.
+
             setTimeout(() => {
                 sessionStorage.setItem("scrollTo", "blog");
                 window.location.reload();

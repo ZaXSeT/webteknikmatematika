@@ -2,41 +2,12 @@ import { supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
     try {
-        const data = await request.formData();
-        const file: File | null = data.get('file') as unknown as File;
-        const username = data.get('username') as string;
-        const title = data.get('title') as string || "";
-        const description = data.get('description') as string || "";
+        const body = await request.json();
+        const { username, url, type, title, description } = body;
 
-        if (!file || !username) {
-            return Response.json({ success: false, message: "Missing file or username" }, { status: 400 });
+        if (!url || !username) {
+            return Response.json({ success: false, message: "Missing url or username" }, { status: 400 });
         }
-
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        // Create unique filename
-        const filename = `${Date.now()}-${file.name.replace(/\s/g, '-')}`;
-
-        // Upload to Supabase Storage
-        // Ensure you have a bucket named 'uploads' in your Supabase Storage and it is set to Public.
-        const { data: uploadData, error: uploadError } = await supabase
-            .storage
-            .from('uploads')
-            .upload(filename, buffer, {
-                contentType: file.type,
-                upsert: false
-            });
-
-        if (uploadError) {
-            throw uploadError;
-        }
-
-        // Get Public URL
-        const { data: { publicUrl } } = supabase
-            .storage
-            .from('uploads')
-            .getPublicUrl(filename);
 
         // Find user
         const { data: user, error: userError } = await supabase
@@ -54,8 +25,8 @@ export async function POST(request: Request) {
             .from('Upload')
             .insert([
                 {
-                    url: publicUrl,
-                    type: file.type,
+                    url,
+                    type,
                     title,
                     description,
                     userId: user.id

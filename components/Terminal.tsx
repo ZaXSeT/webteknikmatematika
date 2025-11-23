@@ -97,8 +97,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 setStep("reg_nim");
                 setLines(prev => [
                     ...prev,
-                    "Initiating user creation protocol...",
-                    "Enter your NIM:"
+                    "Initiating user creation protocol..."
                 ]);
             } else if (command === "help") {
                 setLines(prev => [...prev, "Available commands:", "  login       - Start authentication", "  create user - Register a new account", "  clear       - Clear terminal output", "  help        - Show this help message"]);
@@ -125,7 +124,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 setRegData({ username: "", nim: "", password: "" });
             } else {
                 setRegData(prev => ({ ...prev, nim }));
-                setLines(prev => [...prev, `> ${nim}`, "NIM Validated.", "Username:"]);
+                setLines(prev => [...prev, `> ${nim}`, "NIM Validated."]);
                 setStep("reg_username");
             }
             setInput("");
@@ -135,7 +134,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
         if (step === "reg_username") {
             const username = command;
             setRegData(prev => ({ ...prev, username }));
-            setLines(prev => [...prev, `> ${username}`, "Password:"]);
+            setLines(prev => [...prev, `> ${username}`]);
             setStep("reg_password");
             setInput("");
             return;

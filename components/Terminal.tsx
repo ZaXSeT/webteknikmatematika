@@ -65,7 +65,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     const handleScroll = () => {
         if (!scrollRef.current) return;
         const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-        const isBottom = scrollHeight - scrollTop - clientHeight < 10; // 10px threshold
+        const isBottom = scrollHeight - scrollTop - clientHeight < 20; // 20px threshold
         isAtBottom.current = isBottom;
     };
 
@@ -286,22 +286,6 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     return (
         <div
             className="w-full max-w-2xl mx-auto bg-white/40 dark:bg-black/60 rounded-xl overflow-hidden border border-border shadow-2xl backdrop-blur-md font-mono text-sm md:text-base"
-            onClick={(e) => {
-                // Prevent focus if selecting text
-                if (window.getSelection()?.toString()) return;
-
-                // If clicking the scrollable container directly, check if it's on the scrollbar
-                if (scrollRef.current && e.target === scrollRef.current) {
-                    const rect = scrollRef.current.getBoundingClientRect();
-                    // Check if click is in the scrollbar area (right side)
-                    // clientWidth excludes scrollbar, so if click x is > left + clientWidth, it's on scrollbar/border
-                    if (e.clientX > rect.left + scrollRef.current.clientWidth) {
-                        return;
-                    }
-                }
-
-                inputRef.current?.focus();
-            }}
         >
             {/* Terminal Header */}
             <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border">
@@ -320,7 +304,23 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90"
+                className="p-6 h-[60vh] md:h-[500px] overflow-y-auto custom-scrollbar text-green-600 dark:text-green-500/90 overscroll-y-contain"
+                onClick={(e) => {
+                    // Prevent focus if selecting text
+                    if (window.getSelection()?.toString()) return;
+
+                    // If clicking the scrollable container directly, check if it's on the scrollbar
+                    if (scrollRef.current && e.target === scrollRef.current) {
+                        const rect = scrollRef.current.getBoundingClientRect();
+                        // Check if click is in the scrollbar area (right side)
+                        // clientWidth excludes scrollbar, so if click x is > left + clientWidth, it's on scrollbar/border
+                        if (e.clientX > rect.left + scrollRef.current.clientWidth) {
+                            return;
+                        }
+                    }
+
+                    inputRef.current?.focus({ preventScroll: true });
+                }}
             >
                 {lines.map((line, i) => (
                     <motion.div

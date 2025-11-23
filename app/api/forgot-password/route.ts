@@ -32,21 +32,21 @@ export async function POST(request: Request) {
             .from('User')
             .update({ resetToken, resetTokenExpiry: resetTokenExpiry.toISOString() })
             .eq('id', user.id);
-
         if (updateError) {
             throw updateError;
         }
 
         // Mock Email Construction
-        const mockEmail = `${username.substring(0, 3)}***@student.upj.ac.id`; // Assuming UPJ based on context or generic
+        // If user has an email in DB, use it. Otherwise, construct a mock one.
+        const userEmail = user.email || `${username.substring(0, 3)}***@student.upj.ac.id`;
 
         const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?resetToken=${resetToken}`;
 
-        console.log(`[MOCK EMAIL] To: ${mockEmail} (User: ${username}) - Reset Link: ${resetLink}`);
+        console.log(`[MOCK EMAIL] To: ${userEmail} (User: ${username}) - Reset Link: ${resetLink}`);
 
         return NextResponse.json({
             success: true,
-            message: `Authentication link sent to ${mockEmail}`,
+            message: `Authentication link sent to ${userEmail}`,
             // We return the link here for testing purposes since we can't actually send email
             debugLink: resetLink
         });

@@ -12,9 +12,9 @@ const VALID_NIMS = [
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { username, nim, password } = body;
+        const { username, nim, email, password } = body;
 
-        if (!username || !nim || !password) {
+        if (!username || !nim || !email || !password) {
             return NextResponse.json(
                 { success: false, message: "Missing required fields" },
                 { status: 400 }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         const { data: newUser, error: insertError } = await supabase
             .from('User')
             .insert([
-                { username, nim, password: hashedPassword }
+                { username, nim, email, password: hashedPassword }
             ])
             .select()
             .single();

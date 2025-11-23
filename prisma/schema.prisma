@@ -11,7 +11,8 @@ model User {
   id       Int       @id @default(autoincrement())
   username String    @unique
   nim      String    @unique
-  password         String
+  email    String?   @unique
+  password String
   resetToken       String?
   resetTokenExpiry DateTime?
   uploads          Upload[]

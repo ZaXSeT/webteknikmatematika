@@ -12,7 +12,7 @@ interface TerminalProps {
     username?: string;
 }
 
-type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "reg_nim" | "reg_username" | "reg_password" | "forgot_nim" | "forgot_username" | "reset_password" | "idle";
+type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "reg_nim" | "reg_email" | "reg_username" | "reg_password" | "forgot_nim" | "forgot_username" | "reset_password" | "idle";
 
 const VALID_NIMS = [
     "03082240018", "03082240002", "03082240008", "03082240017", "03082240014",
@@ -34,7 +34,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
     const [input, setInput] = useState("");
     const [step, setStep] = useState<LoginStep>("idle");
     const [credentials, setCredentials] = useState({ username: "", nim: "" });
-    const [regData, setRegData] = useState({ username: "", nim: "", password: "" });
+    const [regData, setRegData] = useState({ username: "", nim: "", email: "", password: "" });
     const [forgotData, setForgotData] = useState({ username: "", nim: "" });
 
     const inputRef = useRef<HTMLInputElement>(null);
@@ -113,7 +113,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 ]);
                 setStep("idle");
                 setCredentials({ username: "", nim: "" });
-                setRegData({ username: "", nim: "", password: "" });
+                setRegData({ username: "", nim: "", email: "", password: "" });
                 setForgotData({ username: "", nim: "" });
             }
             setInput("");
@@ -250,12 +250,27 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                     "Registration aborted."
                 ]);
                 setStep("idle");
-                setRegData({ username: "", nim: "", password: "" });
+                setRegData({ username: "", nim: "", email: "", password: "" });
             } else {
                 setRegData(prev => ({ ...prev, nim }));
-                setLines(prev => [...prev, `> ${nim}`, "NIM Validated."]);
-                setStep("reg_username");
+                setLines(prev => [...prev, `> ${nim}`, "NIM Validated.", "Enter your Email:"]);
+                setStep("reg_email");
             }
+            setInput("");
+            return;
+        }
+
+        if (step === "reg_email") {
+            const email = command;
+            // Basic email validation
+            if (!email.includes("@") || !email.includes(".")) {
+                setLines(prev => [...prev, `> ${email}`, "Error: Invalid email format.", "Please enter a valid email."]);
+                setInput("");
+                return;
+            }
+            setRegData(prev => ({ ...prev, email }));
+            setLines(prev => [...prev, `> ${email}`, "Email recorded.", "Enter your Username:"]);
+            setStep("reg_username");
             setInput("");
             return;
         }
@@ -288,7 +303,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
 
                 if (response.ok && data.success) {
                     setLines(prev => [...prev, "Account created successfully.", "You can now login with your credentials."]);
-                    setRegData({ username: "", nim: "", password: "" });
+                    setRegData({ username: "", nim: "", email: "", password: "" });
                     setStep("idle");
                 } else {
                     setLines(prev => [...prev, `Registration Failed: ${data.message}`]);
@@ -391,6 +406,7 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             case "idle": return "guest@TeknikMatematika:~$";
             case "username": return "user@TeknikMatematika:~$";
             case "reg_nim": return "Enter your NIM:";
+            case "reg_email": return "Email:";
             case "reg_username": return "Username:";
             case "reg_password": return "Password:";
             case "forgot_nim": return "Enter your NIM:";

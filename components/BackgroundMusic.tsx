@@ -49,14 +49,43 @@ export default function BackgroundMusic() {
                     attemptPlay();
                 } else {
                     // If playing, we can stop the interval
-                    // Optional: You could try to unmute here periodically, but that might interrupt playback
                     clearInterval(interval);
                     setIsPlaying(true);
                 }
             }
         }, 2000);
 
-        return () => clearInterval(interval);
+        // "Magic" Unmute on First Interaction
+        const handleFirstInteraction = () => {
+            if (audioRef.current) {
+                // If it's muted (likely due to fallback), unmute it!
+                if (audioRef.current.muted) {
+                    audioRef.current.muted = false;
+                    setIsMuted(false);
+                }
+                // If it was paused (unlikely with interval, but possible), play it!
+                if (audioRef.current.paused) {
+                    audioRef.current.play().then(() => setIsPlaying(true)).catch(() => { });
+                }
+
+                // Remove listeners once we've successfully interacted
+                ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
+                    window.removeEventListener(event, handleFirstInteraction)
+                );
+            }
+        };
+
+        // Add global listeners to catch the very first user action
+        ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
+            window.addEventListener(event, handleFirstInteraction, { once: true })
+        );
+
+        return () => {
+            clearInterval(interval);
+            ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
+                window.removeEventListener(event, handleFirstInteraction)
+            );
+        };
     }, []);
 
     const togglePlay = () => {

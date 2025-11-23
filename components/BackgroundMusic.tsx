@@ -9,7 +9,7 @@ export default function BackgroundMusic() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Local music file
-    const musicUrl = "/music.mp3";
+    const musicUrl = "/reze_theme.mp3";
 
     useEffect(() => {
         // Set volume immediately

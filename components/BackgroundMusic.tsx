@@ -55,35 +55,49 @@ export default function BackgroundMusic() {
             }
         }, 2000);
 
-        // "Magic" Unmute on First Interaction
-        const handleFirstInteraction = () => {
+        // "Magic" Persistent Unmute Strategy
+        const handleInteraction = () => {
             if (audioRef.current) {
-                // If it's muted (likely due to fallback), unmute it!
+                // Attempt to unmute
                 if (audioRef.current.muted) {
                     audioRef.current.muted = false;
-                    setIsMuted(false);
-                }
-                // If it was paused (unlikely with interval, but possible), play it!
-                if (audioRef.current.paused) {
-                    audioRef.current.play().then(() => setIsPlaying(true)).catch(() => { });
                 }
 
-                // Remove listeners once we've successfully interacted
-                ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
-                    window.removeEventListener(event, handleFirstInteraction)
-                );
+                // Attempt to play if paused
+                if (audioRef.current.paused) {
+                    audioRef.current.play()
+                        .then(() => {
+                            setIsPlaying(true);
+                        })
+                        .catch(() => {
+                            // If play failed, likely need to keep muted for now
+                            audioRef.current!.muted = true;
+                            setIsMuted(true);
+                        });
+                }
+
+                // Check if we successfully achieved "Playing & Unmuted"
+                if (!audioRef.current.paused && !audioRef.current.muted) {
+                    setIsMuted(false);
+                    setIsPlaying(true);
+                    // Only remove listeners when we have TOTAL SUCCESS
+                    ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
+                        window.removeEventListener(event, handleInteraction)
+                    );
+                }
             }
         };
 
-        // Add global listeners to catch the very first user action
-        ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
-            window.addEventListener(event, handleFirstInteraction, { once: true })
+        // Add persistent global listeners - we don't use { once: true } anymore
+        // We want to keep trying on every click until we get sound.
+        ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
+            window.addEventListener(event, handleInteraction)
         );
 
         return () => {
             clearInterval(interval);
-            ['click', 'keydown', 'scroll', 'touchstart'].forEach(event =>
-                window.removeEventListener(event, handleFirstInteraction)
+            ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
+                window.removeEventListener(event, handleInteraction)
             );
         };
     }, []);

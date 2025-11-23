@@ -38,7 +38,7 @@ export default function GalleryPage() {
             </div>
 
             <div className="-mt-12 mb-12">
-                <UploadSection username={username} />
+                <UploadSection username={username} compact={true} />
             </div>
 
             {/* Use fullWidth to make posts expand to fill the screen */}

@@ -52,10 +52,21 @@ export default function BlogSection({
 
         checkLocalStorage();
 
-        // Optional: Listen for storage events if user logs in/out in another tab
+        // Listen for storage events (cross-tab)
         window.addEventListener('storage', checkLocalStorage);
-        return () => window.removeEventListener('storage', checkLocalStorage);
-    }, []);
+
+        // Polling fallback: Check every 1s if user is still missing (fixes SPA navigation issues)
+        const interval = setInterval(() => {
+            if (!currentUsername) {
+                checkLocalStorage();
+            }
+        }, 1000);
+
+        return () => {
+            window.removeEventListener('storage', checkLocalStorage);
+            clearInterval(interval);
+        };
+    }, [currentUsername]);
 
     // Sync with prop if it changes and is valid
     useEffect(() => {

@@ -51,8 +51,8 @@ export async function POST(request: Request) {
             debugLink: resetLink
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Forgot password error:", error);
-        return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
+        return NextResponse.json({ success: false, message: `Internal server error: ${error.message}` }, { status: 500 });
     }
 }

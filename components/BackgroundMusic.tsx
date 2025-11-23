@@ -14,13 +14,7 @@ export default function BackgroundMusic() {
     const musicUrl = "/music.mp3";
 
     useEffect(() => {
-        // Restore state from localStorage
-        const savedTime = localStorage.getItem("musicTime");
-
         if (audioRef.current) {
-            if (savedTime) {
-                audioRef.current.currentTime = parseFloat(savedTime);
-            }
             audioRef.current.volume = 0.3;
         }
 
@@ -40,17 +34,6 @@ export default function BackgroundMusic() {
         };
 
         playAudio();
-
-        // Save state periodically
-        const interval = setInterval(() => {
-            if (audioRef.current) {
-                localStorage.setItem("musicTime", audioRef.current.currentTime.toString());
-            }
-        }, 1000);
-
-        return () => {
-            clearInterval(interval);
-        };
     }, []);
 
     const handleEnter = () => {

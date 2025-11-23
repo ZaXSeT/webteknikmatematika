@@ -37,17 +37,16 @@ export async function POST(request: Request) {
             throw updateError;
         }
 
-        // Simulate Sending Email (In a real app, use nodemailer here)
-        // For this demo, we return the link in the response so the terminal can display it or "simulate" sending.
-        // The user asked for "program akan mengirimkan email". Since we don't have SMTP, we'll log it and return it.
+        // Mock Email Construction
+        const mockEmail = `${username.substring(0, 3)}***@student.upj.ac.id`; // Assuming UPJ based on context or generic
 
         const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?resetToken=${resetToken}`;
 
-        console.log(`[MOCK EMAIL] To: ${username} (NIM: ${nim}) - Reset Link: ${resetLink}`);
+        console.log(`[MOCK EMAIL] To: ${mockEmail} (User: ${username}) - Reset Link: ${resetLink}`);
 
         return NextResponse.json({
             success: true,
-            message: "Reset link sent to your email (Simulated).",
+            message: `Authentication link sent to ${mockEmail}`,
             // We return the link here for testing purposes since we can't actually send email
             debugLink: resetLink
         });

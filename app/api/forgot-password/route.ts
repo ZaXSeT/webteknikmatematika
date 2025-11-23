@@ -80,14 +80,13 @@ export async function POST(request: Request) {
                 success: true,
                 message: `Authentication link sent to ${userEmail}`
             });
-
         } catch (emailError: any) {
             console.error("Email sending failed:", emailError);
             // If we can't send email, we might want to fallback or error out.
             // Since user requested "bukan dari terminal", we error out if email fails.
             // However, for testing without SMTP, we might still want to see it in console.
             console.log(`[FALLBACK LINK] ${resetLink}`);
-            return NextResponse.json({ success: false, message: "Failed to send email. Check server logs." }, { status: 500 });
+            return NextResponse.json({ success: false, message: `Failed to send email: ${emailError.message}` }, { status: 500 });
         }
 
     } catch (error: any) {

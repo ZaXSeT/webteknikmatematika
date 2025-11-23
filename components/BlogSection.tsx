@@ -441,7 +441,7 @@ export default function BlogSection({
                                 <motion.div
                                     className="flex h-full w-full"
                                     animate={{ x: `-${currentMediaIndex * 100}%` }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                    transition={{ ease: "easeOut", duration: 0.3 }}
                                     drag={selectedPost.media && selectedPost.media.length > 1 ? "x" : false}
                                     dragElastic={0}
                                     onDragEnd={(e, { offset, velocity }) => {

@@ -11,7 +11,7 @@ interface TerminalProps {
     username?: string;
 }
 
-type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "registration" | "idle";
+type LoginStep = "username" | "nim" | "password" | "processing" | "success" | "logged_in" | "reg_nim" | "reg_username" | "reg_password" | "idle";
 
 const VALID_NIMS = [
     "03082240018", "03082240002", "03082240008", "03082240017", "03082240014",
@@ -94,14 +94,11 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
                 setStep("username");
                 setLines(prev => [...prev, "Initiating authentication sequence...", "Enter your username."]);
             } else if (command === "create user") {
-                setStep("registration");
+                setStep("reg_nim");
                 setLines(prev => [
                     ...prev,
                     "Initiating user creation protocol...",
-                    "Enter user details using the syntax:",
-                    "  string User={Username}",
-                    "  int NIM={NIM}",
-                    "  string Password={Password}"
+                    "Enter your NIM:"
                 ]);
             } else if (command === "help") {
                 setLines(prev => [...prev, "Available commands:", "  login       - Start authentication", "  create user - Register a new account", "  clear       - Clear terminal output", "  help        - Show this help message"]);
@@ -114,79 +111,65 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
             return;
         }
 
-        if (step === "registration") {
-            // Registration Syntax Parsing
-            const userMatch = command.match(/^string User=(.+)$/);
-            const nimMatch = command.match(/^int NIM=(.+)$/);
-            const passMatch = command.match(/^string Password=(.+)$/);
-
-            if (userMatch) {
-                const newUsername = userMatch[1].replace(/;$/, '').trim();
-                setRegData(prev => ({ ...prev, username: newUsername }));
-                setLines(prev => [...prev, `> ${command}`, `Registration: Username set to '${newUsername}'.`]);
-                setInput("");
-                return;
+        // Registration Steps
+        if (step === "reg_nim") {
+            const nim = command;
+            if (!VALID_NIMS.includes(nim)) {
+                setLines(prev => [
+                    ...prev,
+                    `> ${nim}`,
+                    `Error: NIM '${nim}' is not registered in the database.`,
+                    "Registration aborted."
+                ]);
+                setStep("idle");
+                setRegData({ username: "", nim: "", password: "" });
+            } else {
+                setRegData(prev => ({ ...prev, nim }));
+                setLines(prev => [...prev, `> ${nim}`, "NIM Validated.", "Username:"]);
+                setStep("reg_username");
             }
-
-            if (nimMatch) {
-                const newNim = nimMatch[1].replace(/;$/, '').trim();
-
-                if (!VALID_NIMS.includes(newNim)) {
-                    setLines(prev => [
-                        ...prev,
-                        `> ${command}`,
-                        `Error: NIM '${newNim}' is not registered in the database.`,
-                        "Registration aborted."
-                    ]);
-                    setStep("idle");
-                    setRegData({ username: "", nim: "", password: "" });
-                    setInput("");
-                    return;
-                }
-
-                setRegData(prev => ({ ...prev, nim: newNim }));
-                setLines(prev => [...prev, `> ${command}`, `Registration: NIM set to '${newNim}'.`]);
-                setInput("");
-                return;
-            }
-
-            if (passMatch) {
-                const newPass = passMatch[1].replace(/;$/, '').trim();
-                const updatedRegData = { ...regData, password: newPass };
-                setRegData(updatedRegData);
-                setLines(prev => [...prev, `> string Password=********`, "Registration: Password set."]);
-                setInput("");
-
-                if (updatedRegData.username && updatedRegData.nim && updatedRegData.password) {
-                    setLines(prev => [...prev, "Creating account...", "Please wait..."]);
-
-                    try {
-                        const response = await fetch('/api/register', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(updatedRegData),
-                        });
-
-                        const data = await response.json();
-
-                        if (response.ok && data.success) {
-                            setLines(prev => [...prev, "Account created successfully.", "You can now login with your credentials."]);
-                            setRegData({ username: "", nim: "", password: "" });
-                            setStep("idle");
-                        } else {
-                            setLines(prev => [...prev, `Registration Failed: ${data.message}`]);
-                        }
-                    } catch (err: any) {
-                        setLines(prev => [...prev, `Registration Error: ${err.message || "System failure."}`]);
-                    }
-                } else {
-                    setLines(prev => [...prev, "Registration incomplete. Missing Username or NIM."]);
-                }
-                return;
-            }
-
-            setLines(prev => [...prev, `> ${command}`, "Invalid registration syntax."]);
             setInput("");
+            return;
+        }
+
+        if (step === "reg_username") {
+            const username = command;
+            setRegData(prev => ({ ...prev, username }));
+            setLines(prev => [...prev, `> ${username}`, "Password:"]);
+            setStep("reg_password");
+            setInput("");
+            return;
+        }
+
+        if (step === "reg_password") {
+            const password = command;
+            const updatedRegData = { ...regData, password };
+            setRegData(updatedRegData);
+            setLines(prev => [...prev, `> ********`, "Creating account...", "Please wait..."]);
+            setStep("processing");
+            setInput("");
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedRegData),
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    setLines(prev => [...prev, "Account created successfully.", "You can now login with your credentials."]);
+                    setRegData({ username: "", nim: "", password: "" });
+                    setStep("idle");
+                } else {
+                    setLines(prev => [...prev, `Registration Failed: ${data.message}`]);
+                    setStep("idle");
+                }
+            } catch (err: any) {
+                setLines(prev => [...prev, `Registration Error: ${err.message || "System failure."}`]);
+                setStep("idle");
+            }
             return;
         }
 
@@ -279,7 +262,9 @@ export default function Terminal({ onLogin, onLogout, isLoggedIn, username }: Te
         switch (step) {
             case "idle": return "guest@TeknikMatematika:~$";
             case "username": return "user@TeknikMatematika:~$";
-            case "registration": return "registration@TeknikMatematika:~$";
+            case "reg_nim": return "Enter your NIM:";
+            case "reg_username": return "Username:";
+            case "reg_password": return "Password:";
             case "nim": return "NIM:";
             case "password": return "password:";
             case "logged_in": return `${username}@TeknikMatematika:~$`;

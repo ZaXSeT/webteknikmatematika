@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "TeknikMatematika",
-  description: "A premium platform for uploading images and GIFs with a smooth experience.",
+  description: "A very very premium platform for uploading your images, videos, and GIFs.",
 };
 
 export default function RootLayout({

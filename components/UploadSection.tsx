@@ -1,22 +1,33 @@
 "use client";
 
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Crop as CropIcon } from "lucide-react";
 import { useState, useRef } from "react";
+import CropModal from "./CropModal";
+import { autoCropImageIfNeeded } from "@/lib/imageUtils";
 
 interface UploadSectionProps {
     username?: string;
     compact?: boolean;
 }
 
+interface UploadItem {
+    original: File;
+    current: File;
+}
+
 export default function UploadSection({ username, compact = false }: UploadSectionProps) {
     const ref = useRef(null);
-    const [files, setFiles] = useState<File[]>([]);
+    const [items, setItems] = useState<UploadItem[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<string>("");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+
+    // Cropping state
+    const [croppingFileIndex, setCroppingFileIndex] = useState<number | null>(null);
+    const [isCropModalOpen, setIsCropModalOpen] = useState(false);
 
     // Compression states
     const [compressionProgress, setCompressionProgress] = useState<number>(0);
@@ -99,24 +110,45 @@ export default function UploadSection({ username, compact = false }: UploadSecti
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const newFiles = Array.from(e.dataTransfer.files).filter(file =>
-                file.type.startsWith('image/') || file.type.startsWith('video/')
-            );
-            setFiles(prev => [...prev, ...newFiles]);
+            const newFiles = Array.from(e.dataTransfer.files)
+                .filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'))
+                .map(file => ({ original: file, current: file }));
+
+            setItems(prev => [...prev, ...newFiles]);
         }
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files).filter(file =>
-                file.type.startsWith('image/') || file.type.startsWith('video/')
-            );
-            setFiles(prev => [...prev, ...newFiles]);
+            const newFiles = Array.from(e.target.files)
+                .filter(file => file.type.startsWith('image/') || file.type.startsWith('video/'))
+                .map(file => ({ original: file, current: file }));
+
+            setItems(prev => [...prev, ...newFiles]);
         }
     };
 
     const removeFile = (index: number) => {
-        setFiles(prev => prev.filter((_, i) => i !== index));
+        setItems(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const openCropModal = (index: number) => {
+        setCroppingFileIndex(index);
+        setIsCropModalOpen(true);
+    };
+
+    const handleCropComplete = (croppedFile: File) => {
+        if (croppingFileIndex !== null) {
+            setItems(prev => {
+                const newItems = [...prev];
+                // Update only the current version, keep original intact
+                newItems[croppingFileIndex] = {
+                    ...newItems[croppingFileIndex],
+                    current: croppedFile
+                };
+                return newItems;
+            });
+        }
     };
 
     const handleUpload = async () => {
@@ -132,14 +164,21 @@ export default function UploadSection({ username, compact = false }: UploadSecti
             const { supabase } = await import("@/lib/supabase");
             const mediaItems: { url: string, type: string }[] = [];
 
-            for (const file of files) {
-                let fileToUpload = file;
+            for (const item of items) {
+                let fileToUpload = item.current;
 
-                // Check if video needs compression (e.g., > 20MB)
-                if (file.type.startsWith('video/') && file.size > 20 * 1024 * 1024) {
-                    setUploadStatus(`Compressing ${file.name}...`);
+                // 1. Auto-crop removed as per user request.
+                // "ketika user upload dan tidak crop maka ukuran akan mengikuti foto original"
+                // We still check if it's an image for logging purposes if needed, but we don't modify it.
+                if (fileToUpload.type.startsWith('image/')) {
+                    // No-op: keep original file
+                }
+
+                // 2. Check if video needs compression (e.g., > 20MB)
+                if (fileToUpload.type.startsWith('video/') && fileToUpload.size > 20 * 1024 * 1024) {
+                    setUploadStatus(`Compressing ${fileToUpload.name}...`);
                     try {
-                        fileToUpload = await compressVideo(file);
+                        fileToUpload = await compressVideo(fileToUpload);
                         setUploadStatus("Compression finished. Uploading...");
                     } catch (e) {
                         console.error("Compression failed, trying original file", e);
@@ -147,7 +186,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                     }
                 }
 
-                // 1. Upload to Supabase Storage directly
+                // 3. Upload to Supabase Storage directly
                 const filename = `${Date.now()}-${fileToUpload.name.replace(/\s/g, '-')}`;
 
                 const { data: uploadData, error: uploadError } = await supabase
@@ -162,7 +201,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                     throw new Error(`Storage Error: ${uploadError.message}`);
                 }
 
-                // 2. Get Public URL
+                // 4. Get Public URL
                 const { data: { publicUrl } } = supabase
                     .storage
                     .from('uploads')
@@ -171,7 +210,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                 mediaItems.push({ url: publicUrl, type: fileToUpload.type });
             }
 
-            // 3. Save metadata to DB via API (Single Post)
+            // 5. Save metadata to DB via API (Single Post)
             const res = await fetch('/api/upload', {
                 method: 'POST',
                 headers: {
@@ -180,7 +219,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                 body: JSON.stringify({
                     username,
                     media: mediaItems,
-                    title: title || (files.length === 1 ? files[0].name : `${files.length} items`),
+                    title: title || (items.length === 1 ? items[0].current.name : `${items.length} items`),
                     description: description || `Uploaded by ${username}`
                 }),
             });
@@ -191,7 +230,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                 throw new Error(data.message || "Failed to save post metadata");
             }
             setUploadStatus("Upload successful!");
-            setFiles([]);
+            setItems([]);
             setTitle("");
             setDescription("");
 
@@ -285,34 +324,47 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                         </div>
                     </motion.div>
 
-                    {files.length > 0 && (
+                    {items.length > 0 && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="mt-12"
                         >
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                                {files.map((file, index) => (
+                                {items.map((item, index) => (
                                     <div key={index} className="relative group aspect-square rounded-xl overflow-hidden bg-muted">
-                                        {file.type.startsWith('video/') ? (
-                                            <video src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                        {item.current.type.startsWith('video/') ? (
+                                            <video src={URL.createObjectURL(item.current)} className="w-full h-full object-cover" />
                                         ) : (
                                             <img
-                                                src={URL.createObjectURL(file)}
+                                                src={URL.createObjectURL(item.current)}
                                                 alt="preview"
                                                 className="w-full h-full object-cover"
                                             />
                                         )}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+
+                                        {/* Overlay Controls */}
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                            {item.current.type.startsWith('image/') && (
+                                                <button
+                                                    onClick={() => openCropModal(index)}
+                                                    className="p-2 bg-blue-500/80 text-white rounded-full hover:bg-blue-500 transition-colors"
+                                                    title="Crop Image"
+                                                >
+                                                    <CropIcon size={20} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => removeFile(index)}
-                                                className="p-2 bg-red-500/20 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-colors"
+                                                className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-500 transition-colors"
+                                                title="Remove"
                                             >
                                                 <X size={20} />
                                             </button>
                                         </div>
-                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                                            <p className="text-xs text-white truncate">{file.name}</p>
+
+                                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+                                            <p className="text-xs text-white truncate">{item.current.name}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -347,7 +399,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                                     disabled={isUploading || !title.trim()}
                                     className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-full font-medium transition-all hover:scale-105 active:scale-95"
                                 >
-                                    {isUploading ? (isCompressing ? `Compressing ${compressionProgress}%...` : "Uploading...") : `Upload ${files.length} Files`}
+                                    {isUploading ? (isCompressing ? `Compressing ${compressionProgress}%...` : "Uploading...") : `Upload ${items.length} Files`}
                                 </button>
                                 {uploadStatus && (
                                     <p className={`text-sm ${uploadStatus.includes("failed") || uploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>
@@ -359,6 +411,14 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                     )}
                 </div>
             </div>
+
+            {/* Crop Modal - Note: We pass the ORIGINAL file here so user can re-crop from scratch */}
+            <CropModal
+                isOpen={isCropModalOpen}
+                onClose={() => setIsCropModalOpen(false)}
+                onComplete={handleCropComplete}
+                file={croppingFileIndex !== null ? items[croppingFileIndex].original : null}
+            />
         </section >
     );
 }

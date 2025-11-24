@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, X, Heart, MessageCircle, Send, Trash2, Edit2, Save, ChevronLeft, ChevronRight, Layers, Bookmark } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import VideoPlayer from "./VideoPlayer";
 
 interface BlogSectionProps {
     username?: string;
@@ -42,27 +43,34 @@ export default function BlogSection({
     const [isClosing, setIsClosing] = useState(false);
     const [replyingTo, setReplyingTo] = useState<any | null>(null);
     const commentInputRef = useRef<HTMLInputElement>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [direction, setDirection] = useState(0);
+    const [fixedAspectRatio, setFixedAspectRatio] = useState(1);
+    const [isDesktop, setIsDesktop] = useState(false);
 
     const handleCloseModal = () => {
         setIsClosing(true);
     };
 
     useEffect(() => {
+        const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
         if (selectedPost && !isClosing) {
-            // If we are already showing this post, don't re-animate
             if (activePostIdRef.current === selectedPost.id) {
                 return;
             }
             activePostIdRef.current = selectedPost.id;
 
-            // Prepare for animation - promote to GPU
             if (overlayRef.current) overlayRef.current.style.willChange = 'opacity';
             if (contentRef.current) contentRef.current.style.willChange = 'opacity';
 
-            // Wait for 2 frames to ensure layout is settled and browser is ready
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
-                    // Enter animation
                     overlayRef.current?.animate([
                         { opacity: 0 },
                         { opacity: 1 }
@@ -85,7 +93,6 @@ export default function BlogSection({
                 });
             });
         } else if (isClosing) {
-            // Exit animation
             const overlayAnim = overlayRef.current?.animate([
                 { opacity: 1 },
                 { opacity: 0 }
@@ -108,7 +115,6 @@ export default function BlogSection({
                 setSelectedPost(null);
                 setIsClosing(false);
                 activePostIdRef.current = null;
-                // Cleanup will-change to save memory
                 if (overlayRef.current) overlayRef.current.style.willChange = 'auto';
                 if (contentRef.current) contentRef.current.style.willChange = 'auto';
             };
@@ -121,7 +127,6 @@ export default function BlogSection({
         }
     }, [selectedPost, isClosing]);
 
-    // Initial check from localStorage on mount
     useEffect(() => {
         const checkLocalStorage = () => {
             const storedUsername = localStorage.getItem("username");
@@ -131,11 +136,7 @@ export default function BlogSection({
         };
 
         checkLocalStorage();
-
-        // Listen for storage events (cross-tab)
         window.addEventListener('storage', checkLocalStorage);
-
-        // Polling fallback: Check every 1s if user is still missing
         const interval = setInterval(() => {
             if (!currentUsername) {
                 checkLocalStorage();
@@ -148,7 +149,6 @@ export default function BlogSection({
         };
     }, [currentUsername]);
 
-    // Sync with prop if it changes and is valid
     useEffect(() => {
         if (propUsername) {
             setCurrentUsername(propUsername);
@@ -159,13 +159,6 @@ export default function BlogSection({
         commentsEndRef.current?.scrollIntoView({ behavior: "auto" });
     };
 
-    // Removed auto-scroll to bottom on comments change to prevent jumping
-    // useEffect(() => {
-    //     if (selectedPost?.comments) {
-    //         scrollToBottom();
-    //     }
-    // }, [selectedPost?.comments]);
-
     useEffect(() => {
         if (selectedPost) {
             setIsEditing(false);
@@ -173,32 +166,30 @@ export default function BlogSection({
             setEditDescription(selectedPost.description || "");
 
             document.body.style.overflow = 'hidden';
-            // document.documentElement.style.overflow = 'hidden';
 
             const handleKeyDown = (e: KeyboardEvent) => {
                 if (e.key === "ArrowRight") {
                     if (selectedPost.media && currentMediaIndex < selectedPost.media.length - 1) {
                         setCurrentMediaIndex(prev => prev + 1);
+                        setDirection(1);
                     }
                 } else if (e.key === "ArrowLeft") {
                     if (currentMediaIndex > 0) {
                         setCurrentMediaIndex(prev => prev - 1);
+                        setDirection(-1);
                     }
                 } else if (e.key === "Escape") {
-                    setSelectedPost(null);
+                    handleCloseModal();
                 }
             };
             window.addEventListener('keydown', handleKeyDown);
 
             return () => {
                 document.body.style.overflow = 'unset';
-                // document.documentElement.style.overflow = 'unset';
-
                 window.removeEventListener('keydown', handleKeyDown);
             };
         } else {
             document.body.style.overflow = 'unset';
-            // document.documentElement.style.overflow = 'unset';
         }
     }, [selectedPost, currentMediaIndex]);
 
@@ -264,30 +255,7 @@ export default function BlogSection({
         }
     };
 
-    const handleUpdate = async () => {
-        try {
-            const res = await fetch(`/api/posts/${selectedPost.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername, title: editTitle, description: editDescription })
-            });
-            const data = await res.json();
-            if (data.success) {
-                setIsEditing(false);
-                const updatedPost = { ...selectedPost, title: editTitle, description: editDescription };
-                setSelectedPost(updatedPost);
-                setUploads(prev => prev.map(u => u.id === selectedPost.id ? updatedPost : u));
-            } else {
-                alert(data.message || "Failed to update");
-            }
-        } catch (e) {
-            console.error(e);
-            alert("Failed to update");
-        }
-    };
-
-    const handleLike = async (e: React.MouseEvent, post: any) => {
-        e.stopPropagation();
+    const handleLike = async (post: any) => {
         let activeUser = currentUsername;
         if (!activeUser) {
             const storedUsername = localStorage.getItem("username");
@@ -320,11 +288,9 @@ export default function BlogSection({
             if (!data.success) {
                 throw new Error(data.message || "Failed to like");
             }
-            // fetchUploads(); // Removed to prevent flickering
         } catch (error: any) {
             console.error("Like failed", error);
             alert(error.message || "Failed to update like. Please try again.");
-            // Revert optimistic update
             setSelectedPost(post);
             setUploads(prev => prev.map(u => u.id === post.id ? post : u));
         }
@@ -377,14 +343,10 @@ export default function BlogSection({
             const data = await res.json();
 
             if (data.success) {
-                // Update the specific post with the real data from the server response (e.g. real comment ID)
-                // without refetching everything to avoid flicker
                 if (data.comment) {
                     const realComment = data.comment;
                     setUploads(prev => prev.map(u => {
                         if (u.id === selectedPost.id) {
-                            // Replace optimistic comment with real one
-                            // For simplicity in this fix, we just append the real one if not found (unlikely) or replace.
                             return { ...u, comments: [...(u.comments.filter((c: any) => c.id !== optimisticComment.id)), realComment] };
                         }
                         return u;
@@ -404,7 +366,6 @@ export default function BlogSection({
         } catch (error: any) {
             console.error("Comment failed", error);
             alert("Failed to post comment");
-            // Revert
             setSelectedPost(selectedPost);
             setUploads(prev => prev.map(u => u.id === selectedPost.id ? selectedPost : u));
         }
@@ -433,23 +394,10 @@ export default function BlogSection({
         })
     };
 
-    const [isDesktop, setIsDesktop] = useState(false);
-
-    useEffect(() => {
-        const handleResize = () => setIsDesktop(window.innerWidth >= 768);
-        handleResize();
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
-
     const paginate = (newDirection: number) => {
         setDirection(newDirection);
         setCurrentMediaIndex(prev => prev + newDirection);
     };
-
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [direction, setDirection] = useState(0);
-    const activeAspectRatio = mediaAspectRatios[0] || 1;
 
     const handleMediaLoad = (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>, index: number) => {
         const { naturalWidth, naturalHeight, videoWidth, videoHeight } = event.currentTarget as any;
@@ -471,26 +419,6 @@ export default function BlogSection({
         }
     };
 
-    const timeAgo = (dateString: string) => {
-        const date = new Date(dateString);
-        const now = new Date();
-        const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-        if (seconds < 30) return "Just now";
-
-        let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + " years ago";
-        interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + " months ago";
-        interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + " days ago";
-        interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + " hours ago";
-        interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + " minutes ago";
-        return Math.floor(seconds) + " seconds ago";
-    };
-
     const onReply = (comment: any) => {
         setReplyingTo(comment);
         commentInputRef.current?.focus();
@@ -500,15 +428,23 @@ export default function BlogSection({
 
     useEffect(() => {
         if (selectedPost) {
-            if (gridAspectRatios[selectedPost.id]) {
-                setMediaAspectRatios({ 0: gridAspectRatios[selectedPost.id] });
-            } else {
-                setMediaAspectRatios({});
-            }
             setCurrentMediaIndex(0);
             setDirection(0);
+            setMediaAspectRatios({});
+
+            let initialRatio = 1;
+            if (gridAspectRatios[selectedPost.id]) {
+                initialRatio = gridAspectRatios[selectedPost.id];
+            }
+            setFixedAspectRatio(initialRatio);
         }
-    }, [selectedPost?.id]);
+    }, [selectedPost?.id, gridAspectRatios]);
+
+    useEffect(() => {
+        if (mediaAspectRatios[0]) {
+            setFixedAspectRatio(mediaAspectRatios[0]);
+        }
+    }, [mediaAspectRatios]);
 
     return (
         <section id="media" className={`bg-background text-foreground ${hideHeader ? '' : 'py-24'}`}>
@@ -553,9 +489,9 @@ export default function BlogSection({
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.5, delay: index * 0.05 }}
-                                className="group cursor-pointer break-inside-avoid mb-6"
+                                className="group cursor-pointer break-inside-avoid mb-0 md:mb-6"
                             >
-                                <div className={`overflow-hidden rounded-2xl mb-2 bg-muted relative ${forceSquare ? 'aspect-square' : ''}`}>
+                                <div className={`overflow-hidden rounded-sm md:rounded-2xl mb-0 md:mb-2 bg-muted relative ${forceSquare ? 'aspect-square' : ''}`}>
                                     {upload.type === 'video/mp4' || upload.type === 'video/webm' ? (
                                         <video
                                             src={upload.url}
@@ -576,10 +512,10 @@ export default function BlogSection({
                                         </div>
                                     )}
                                 </div>
-                                <h3 className="text-sm font-bold mb-1 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight text-foreground">
+                                <h3 className="hidden md:block text-sm font-bold mb-1 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight text-foreground">
                                     {upload.title || "Untitled"}
                                 </h3>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
                                     <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0">
                                         {upload.user?.username?.[0]?.toUpperCase() || "?"}
                                     </div>
@@ -643,26 +579,7 @@ export default function BlogSection({
                         <div
                             ref={contentRef}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-card rounded-xl overflow-y-auto md:overflow-hidden shadow-2xl flex flex-col md:flex-row relative max-h-[95vh] w-full md:w-auto opacity-0"
-                            style={{
-                                '--aspect-ratio': activeAspectRatio,
-                                '--sidebar-width': isDesktop ? '400px' : '0px',
-                                '--max-modal-width': 'calc(100vw - 40px)',
-                                '--max-modal-height': 'calc(100vh - 40px)',
-                                '--max-img-width': 'min(1200px, calc(var(--max-modal-width) - var(--sidebar-width)))',
-
-                                // Calculate dimensions based on aspect ratio
-                                '--perfect-height': 'calc(var(--max-img-width) / var(--aspect-ratio))',
-                                '--constrained-height': 'min(var(--max-modal-height), var(--perfect-height))',
-
-                                // Final dimensions
-                                '--calculated-height': 'var(--constrained-height)',
-                                '--calculated-width': 'calc(var(--calculated-height) * var(--aspect-ratio))',
-
-                                height: isDesktop ? 'var(--calculated-height)' : 'auto',
-                                width: isDesktop ? 'calc(var(--calculated-width) + var(--sidebar-width))' : '100%',
-                                maxWidth: 'var(--max-modal-width)'
-                            } as React.CSSProperties}
+                            className="bg-card rounded-xl overflow-y-auto md:overflow-hidden shadow-2xl flex flex-col md:flex-row relative w-full md:w-auto md:max-w-[90vw] md:h-[85vh] opacity-0"
                         >
                             {/* Top Right Actions */}
                             <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
@@ -684,12 +601,7 @@ export default function BlogSection({
                             </div>
 
                             {/* Image/Video Section */}
-                            <div className="relative bg-black flex items-center justify-center overflow-hidden"
-                                style={{
-                                    width: isDesktop ? 'var(--calculated-width)' : '100%',
-                                    height: isDesktop ? '100%' : 'auto',
-                                    aspectRatio: isDesktop ? 'auto' : `${activeAspectRatio}`
-                                }}
+                            <div className="relative bg-black flex items-center justify-center overflow-hidden flex-1 min-h-[40vh] md:min-h-full md:min-w-[40vw] lg:min-w-[50vw]"
                             >
                                 {selectedPost.media && selectedPost.media.length > 0 ? (
                                     <>
@@ -734,7 +646,6 @@ export default function BlogSection({
                                                     x: { type: "tween", ease: "easeInOut", duration: 0.3 },
                                                     opacity: { duration: 0.2 }
                                                 }}
-                                                style={{ willChange: 'transform' }}
                                                 drag="x"
                                                 dragConstraints={{ left: 0, right: 0 }}
                                                 dragElastic={1}
@@ -742,16 +653,12 @@ export default function BlogSection({
                                                     const swipe = swipePower(offset.x, velocity.x);
 
                                                     if (swipe < -swipeConfidenceThreshold) {
-                                                        if (currentMediaIndex < selectedPost.media.length - 1) {
-                                                            paginate(1);
-                                                        }
+                                                        paginate(1);
                                                     } else if (swipe > swipeConfidenceThreshold) {
-                                                        if (currentMediaIndex > 0) {
-                                                            paginate(-1);
-                                                        }
+                                                        paginate(-1);
                                                     }
                                                 }}
-                                                className="absolute w-full h-full flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing"
+                                                className="absolute inset-0 flex items-center justify-center"
                                             >
                                                 {(() => {
                                                     const media = selectedPost.media[currentMediaIndex];
@@ -760,33 +667,28 @@ export default function BlogSection({
                                                     if (isVideo) {
                                                         return (
                                                             <div
-                                                                className="w-full h-full pointer-events-auto z-10 relative flex items-center justify-center"
+                                                                className="w-full h-full pointer-events-auto z-10 relative flex items-center justify-center overflow-hidden bg-black"
                                                                 onPointerDown={(e) => e.stopPropagation()}
                                                                 onMouseDown={(e) => e.stopPropagation()}
                                                                 onTouchStart={(e) => e.stopPropagation()}
                                                             >
-                                                                <video
+                                                                <VideoPlayer
                                                                     src={media.url}
-                                                                    controls
-                                                                    autoPlay
-                                                                    muted
-                                                                    loop
-                                                                    playsInline
-                                                                    preload="auto"
-                                                                    className="w-full h-full object-contain"
                                                                     poster={media.poster}
+                                                                    className="w-full h-full object-contain"
                                                                     onLoadedMetadata={(e) => handleMediaLoad(e, currentMediaIndex)}
+                                                                    autoPlay={true}
                                                                 />
                                                             </div>
                                                         );
                                                     }
 
                                                     return (
-                                                        <div className="relative w-full h-full">
+                                                        <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-black">
                                                             <img
                                                                 src={media.url}
                                                                 alt={selectedPost.title}
-                                                                className="w-full h-full object-contain"
+                                                                className="w-full h-full object-contain pointer-events-none"
                                                                 draggable={false}
                                                                 onLoad={(e) => handleMediaLoad(e, currentMediaIndex)}
                                                             />
@@ -810,50 +712,52 @@ export default function BlogSection({
                                         )}
                                     </>
                                 ) : (
-                                    <img
-                                        src={selectedPost.url}
-                                        alt={selectedPost.title}
-                                        className="w-full h-full object-contain"
-                                        onLoad={(e) => handleMediaLoad(e, 0)}
-                                    />
+                                    <div className="text-white">No media</div>
                                 )}
                             </div>
 
-                            {/* Sidebar (Comments & Info) */}
-                            <div className="flex flex-col bg-card w-full md:w-[var(--sidebar-width)] h-auto md:h-full border-l border-border">
+                            {/* Comments Section (Right Side on Desktop, Bottom on Mobile) */}
+                            <div className="flex flex-col w-full md:w-[400px] bg-card border-l border-border h-full max-h-[50vh] md:max-h-full">
                                 {/* Header */}
-                                <div className="p-4 border-b border-border flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                                            {selectedPost.user?.username?.[0]?.toUpperCase() || "?"}
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-sm">
-                                                {selectedPost.user?.username || "Anonymous"}
-                                            </div>
-                                        </div>
+                                <div className="p-4 border-b border-border flex items-center gap-3 shrink-0">
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
+                                        {selectedPost.user?.username?.[0]?.toUpperCase() || "?"}
                                     </div>
+                                    <span className="font-semibold">{selectedPost.user?.username || "Anonymous"}</span>
+                                    {currentUsername === selectedPost.user?.username && (
+                                        <button
+                                            onClick={handleDelete}
+                                            className="ml-auto p-2 text-red-500 hover:bg-red-50 rounded-full md:hidden"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    )}
                                 </div>
 
-                                {/* Comments Scroll Area */}
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar-light">
+                                {/* Caption & Comments List */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {/* Caption */}
-                                    <div className="flex gap-3">
-
-                                        <div className="text-sm w-full">
-                                            {selectedPost.title && <div className="font-bold text-base mb-1">{selectedPost.title}</div>}
-                                            {selectedPost.description && (
-                                                <div className="whitespace-pre-wrap text-sm">
-                                                    {selectedPost.description}
+                                    {selectedPost.title && (
+                                        <div className="flex gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground shrink-0">
+                                                {selectedPost.user?.username?.[0]?.toUpperCase() || "?"}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="text-sm">
+                                                    <span className="font-semibold mr-2">{selectedPost.user?.username}</span>
+                                                    {selectedPost.title}
                                                 </div>
-                                            )}
-                                            <div className="text-xs text-muted-foreground mt-2">
-                                                {timeAgo(selectedPost.createdAt)}
+                                                <div className="text-xs text-muted-foreground mt-1">
+                                                    Uploaded by {selectedPost.user?.username}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground mt-1">
+                                                    {timeAgo(selectedPost.createdAt)}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Comments List */}
+                                    {/* Comments */}
                                     {selectedPost.comments?.filter((c: any) => !c.parentId).map((comment: any) => (
                                         <CommentItem
                                             key={comment.id}
@@ -862,61 +766,77 @@ export default function BlogSection({
                                             onReply={onReply}
                                         />
                                     ))}
-                                    <div ref={commentsEndRef} />
                                 </div>
 
                                 {/* Actions & Input */}
-                                <div className="p-4 border-t border-border bg-card">
-                                    <div className="flex items-center gap-4 mb-4">
-                                        <button
-                                            onClick={(e) => handleLike(e, selectedPost)}
-                                            className="hover:opacity-70 transition-opacity"
-                                        >
-                                            <Heart
-                                                className={selectedPost.likes?.some((l: any) => (l.user?.username || l.username) === currentUsername) ? "fill-red-500 text-red-500" : ""}
-                                                size={24}
-                                            />
-                                        </button>
-                                        <button className="hover:opacity-70 transition-opacity">
-                                            <MessageCircle size={24} />
-                                        </button>
-
-                                    </div>
-                                    <div className="text-sm font-semibold mb-2">
-                                        {selectedPost.likes?.length || 0} likes
-                                    </div>
-                                    <div className="text-xs text-muted-foreground uppercase mb-4">
-                                        {timeAgo(selectedPost.createdAt)}
-                                    </div>
-                                    {replyingTo && (
-                                        <div className="flex items-center justify-between bg-muted/30 p-2 rounded-lg mb-2 text-xs">
-                                            <span className="text-muted-foreground">
-                                                Replying to <span className="font-bold text-foreground">@{replyingTo.user?.username}</span>
-                                            </span>
+                                <div className="p-4 border-t border-border bg-card shrink-0">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-4">
                                             <button
-                                                onClick={() => setReplyingTo(null)}
-                                                className="text-muted-foreground hover:text-foreground"
+                                                onClick={() => handleLike(selectedPost)}
+                                                className={`transition-transform active:scale-125 ${selectedPost.likes?.some((l: any) => l.user?.username === currentUsername)
+                                                    ? "text-red-500"
+                                                    : "text-foreground hover:text-muted-foreground"
+                                                    }`}
                                             >
-                                                <X size={14} />
+                                                <Heart
+                                                    size={24}
+                                                    fill={selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? "currentColor" : "none"}
+                                                />
+                                            </button>
+                                            <button className="text-foreground hover:text-muted-foreground" onClick={() => commentInputRef.current?.focus()}>
+                                                <MessageCircle size={24} />
+                                            </button>
+                                            <button className="text-foreground hover:text-muted-foreground">
+                                                <Send size={24} />
                                             </button>
                                         </div>
-                                    )}
-                                    <form onSubmit={handleComment} className="flex gap-2">
+                                        <button className="text-foreground hover:text-muted-foreground">
+                                            <Bookmark size={24} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <div className="font-semibold text-sm">
+                                            {selectedPost.likes?.length || 0} likes
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                                            {new Date(selectedPost.createdAt).toLocaleDateString(undefined, {
+                                                month: 'long',
+                                                day: 'numeric'
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <form onSubmit={handleComment} className="flex items-center gap-2 relative">
+                                        {replyingTo && (
+                                            <div className="absolute -top-10 left-0 right-0 bg-muted/80 backdrop-blur-sm px-3 py-1.5 text-xs flex justify-between items-center rounded-t-md border-t border-x border-border">
+                                                <span className="truncate">Replying to <span className="font-semibold">{replyingTo.user?.username}</span></span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReplyingTo(null)}
+                                                    className="p-1 hover:bg-black/10 rounded-full"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        )}
                                         <input
+                                            ref={commentInputRef}
                                             type="text"
-                                            placeholder="Add a comment..."
+                                            placeholder={replyingTo ? `Reply to ${replyingTo.user?.username}...` : "Add a comment..."}
+                                            className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm placeholder:text-muted-foreground"
                                             value={commentText}
                                             onChange={(e) => setCommentText(e.target.value)}
-                                            className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0 px-0"
-                                            ref={commentInputRef}
                                         />
-                                        <button
-                                            type="submit"
-                                            disabled={!commentText.trim()}
-                                            className="text-blue-500 font-semibold text-sm disabled:opacity-50 hover:text-blue-600"
-                                        >
-                                            Post
-                                        </button>
+                                        {commentText.trim() && (
+                                            <button
+                                                type="submit"
+                                                className="text-blue-500 font-semibold text-sm hover:text-blue-700 disabled:opacity-50"
+                                            >
+                                                Post
+                                            </button>
+                                        )}
                                     </form>
                                 </div>
                             </div>
@@ -924,7 +844,7 @@ export default function BlogSection({
                     </div>
                 )}
             </div>
-        </section >
+        </section>
     );
 }
 
@@ -964,8 +884,6 @@ const getAllReplies = (rootId: string, allComments: any[]) => {
 const CommentItem = ({ comment, allComments, depth = 0, onReply }: { comment: any, allComments: any[], depth?: number, onReply: (c: any) => void }) => {
     const [visibleCount, setVisibleCount] = useState(0);
 
-    // Only fetch replies if we are at the top level (depth 0)
-    // If depth > 0, we assume the parent has already fetched and flattened us into the list
     const replies = depth === 0 ? getAllReplies(comment.id, allComments) : [];
 
     const handleViewReplies = () => {
@@ -999,10 +917,8 @@ const CommentItem = ({ comment, allComments, depth = 0, onReply }: { comment: an
                 </div>
             </div>
 
-            {/* Replies Section - Only rendered for top-level comments */}
             {replies.length > 0 && depth === 0 && (
                 <div className="pl-11 mt-1">
-                    {/* Render Visible Replies */}
                     {visibleCount > 0 && (
                         <div className="space-y-4 mt-2 mb-2">
                             {replies.slice(0, visibleCount).map(reply => (
@@ -1017,7 +933,6 @@ const CommentItem = ({ comment, allComments, depth = 0, onReply }: { comment: an
                         </div>
                     )}
 
-                    {/* View/Hide Controls */}
                     <div className="flex items-center gap-4">
                         {visibleCount < replies.length && (
                             <button

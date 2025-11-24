@@ -45,8 +45,12 @@ export default function CropModal({ isOpen, onClose, onComplete, file }: CropMod
     }, [file]);
 
     const onMediaLoaded = useCallback((mediaSize: { naturalWidth: number; naturalHeight: number }) => {
-        setNaturalRatio(mediaSize.naturalWidth / mediaSize.naturalHeight);
-    }, []);
+        const ratio = mediaSize.naturalWidth / mediaSize.naturalHeight;
+        setNaturalRatio(ratio);
+        if (activeRatioLabel === 'Original') {
+            setAspect(ratio);
+        }
+    }, [activeRatioLabel]);
 
     const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels);

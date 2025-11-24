@@ -417,7 +417,7 @@ export default function UploadSection({ username, compact = false }: UploadSecti
                 isOpen={isCropModalOpen}
                 onClose={() => setIsCropModalOpen(false)}
                 onComplete={handleCropComplete}
-                file={croppingFileIndex !== null ? items[croppingFileIndex].original : null}
+                file={croppingFileIndex !== null && items[croppingFileIndex] ? items[croppingFileIndex].original : null}
             />
         </section >
     );

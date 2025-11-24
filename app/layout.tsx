@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import SmoothScroll from "@/components/SmoothScroll";
+
 
 import BackgroundMusic from "@/components/BackgroundMusic";
 
@@ -30,9 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        <SmoothScroll>
-          {children}
-        </SmoothScroll>
+        {children}
         <BackgroundMusic />
       </body>
     </html>

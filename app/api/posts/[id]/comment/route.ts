@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase";
 export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
-        const { username, text } = await request.json();
+        const { username, text, parentId } = await request.json();
         const uploadId = parseInt(params.id);
 
         if (!username || !text || isNaN(uploadId)) {
@@ -27,10 +27,11 @@ export async function POST(request: Request, props: { params: Promise<{ id: stri
                 {
                     text,
                     userId: user.id,
-                    uploadId
+                    uploadId,
+                    parentId: parentId || null
                 }
             ])
-            .select('*, user:User(username)')
+            .select('*, user:User(username), replies:Comment(*, user:User(username))')
             .single();
 
         if (commentError) {

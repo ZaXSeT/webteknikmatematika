@@ -38,7 +38,7 @@ export default function ClientHome() {
             setTimeout(() => {
                 const element = document.getElementById(scrollToId);
                 if (element) {
-                    element.scrollIntoView({ behavior: "smooth" });
+                    element.scrollIntoView({ behavior: "auto" });
                 }
             }, 500);
         }

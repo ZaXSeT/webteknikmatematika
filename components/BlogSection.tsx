@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, X, Heart, MessageCircle, Send, Trash2, Edit2, Save, ChevronLeft, ChevronRight, Layers } from "lucide-react";
+import { ArrowRight, X, Heart, MessageCircle, Send, Trash2, Edit2, Save, ChevronLeft, ChevronRight, Layers, Bookmark } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
@@ -29,11 +29,97 @@ export default function BlogSection({
     const [loading, setLoading] = useState(true);
     const [selectedPost, setSelectedPost] = useState<any | null>(null);
     const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+    const [mediaAspectRatios, setMediaAspectRatios] = useState<Record<number, number>>({});
+    const [gridAspectRatios, setGridAspectRatios] = useState<Record<string, number>>({});
     const [commentText, setCommentText] = useState("");
     const [isEditing, setIsEditing] = useState(false);
     const [editTitle, setEditTitle] = useState("");
     const [editDescription, setEditDescription] = useState("");
     const commentsEndRef = useRef<HTMLDivElement>(null);
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const activePostIdRef = useRef<number | null>(null);
+    const [isClosing, setIsClosing] = useState(false);
+    const [replyingTo, setReplyingTo] = useState<any | null>(null);
+    const commentInputRef = useRef<HTMLInputElement>(null);
+
+    const handleCloseModal = () => {
+        setIsClosing(true);
+    };
+
+    useEffect(() => {
+        if (selectedPost && !isClosing) {
+            // If we are already showing this post, don't re-animate
+            if (activePostIdRef.current === selectedPost.id) {
+                return;
+            }
+            activePostIdRef.current = selectedPost.id;
+
+            // Prepare for animation - promote to GPU
+            if (overlayRef.current) overlayRef.current.style.willChange = 'opacity';
+            if (contentRef.current) contentRef.current.style.willChange = 'opacity';
+
+            // Wait for 2 frames to ensure layout is settled and browser is ready
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    // Enter animation
+                    overlayRef.current?.animate([
+                        { opacity: 0 },
+                        { opacity: 1 }
+                    ], {
+                        duration: 100,
+                        easing: 'ease-out',
+                        fill: 'forwards',
+                        composite: 'replace'
+                    });
+
+                    contentRef.current?.animate([
+                        { opacity: 0 },
+                        { opacity: 1 }
+                    ], {
+                        duration: 100,
+                        easing: 'ease-out',
+                        fill: 'forwards',
+                        composite: 'replace'
+                    });
+                });
+            });
+        } else if (isClosing) {
+            // Exit animation
+            const overlayAnim = overlayRef.current?.animate([
+                { opacity: 1 },
+                { opacity: 0 }
+            ], {
+                duration: 100,
+                easing: 'ease-in',
+                fill: 'forwards'
+            });
+
+            const contentAnim = contentRef.current?.animate([
+                { opacity: 1 },
+                { opacity: 0 }
+            ], {
+                duration: 100,
+                easing: 'ease-in',
+                fill: 'forwards'
+            });
+
+            const cleanup = () => {
+                setSelectedPost(null);
+                setIsClosing(false);
+                activePostIdRef.current = null;
+                // Cleanup will-change to save memory
+                if (overlayRef.current) overlayRef.current.style.willChange = 'auto';
+                if (contentRef.current) contentRef.current.style.willChange = 'auto';
+            };
+
+            if (contentAnim) {
+                contentAnim.onfinish = cleanup;
+            } else {
+                cleanup();
+            }
+        }
+    }, [selectedPost, isClosing]);
 
     // Initial check from localStorage on mount
     useEffect(() => {
@@ -70,37 +156,25 @@ export default function BlogSection({
     }, [propUsername]);
 
     const scrollToBottom = () => {
-        commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        commentsEndRef.current?.scrollIntoView({ behavior: "auto" });
     };
 
-    useEffect(() => {
-        if (selectedPost?.comments) {
-            scrollToBottom();
-        }
-    }, [selectedPost?.comments]);
+    // Removed auto-scroll to bottom on comments change to prevent jumping
+    // useEffect(() => {
+    //     if (selectedPost?.comments) {
+    //         scrollToBottom();
+    //     }
+    // }, [selectedPost?.comments]);
 
     useEffect(() => {
-        const preventDefault = (e: Event) => {
-            const target = e.target as HTMLElement;
-            const scrollableSection = target.closest('.custom-scrollbar-light');
-            if (!scrollableSection) {
-                e.preventDefault();
-            }
-        };
-
         if (selectedPost) {
             setIsEditing(false);
             setEditTitle(selectedPost.title || "");
             setEditDescription(selectedPost.description || "");
 
             document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-            if ((window as any).lenis) (window as any).lenis.stop();
+            // document.documentElement.style.overflow = 'hidden';
 
-            window.addEventListener('wheel', preventDefault, { passive: false });
-            window.addEventListener('touchmove', preventDefault, { passive: false });
-
-            // Keyboard Navigation
             const handleKeyDown = (e: KeyboardEvent) => {
                 if (e.key === "ArrowRight") {
                     if (selectedPost.media && currentMediaIndex < selectedPost.media.length - 1) {
@@ -118,19 +192,13 @@ export default function BlogSection({
 
             return () => {
                 document.body.style.overflow = 'unset';
-                document.documentElement.style.overflow = 'unset';
-                if ((window as any).lenis) (window as any).lenis.start();
-                window.removeEventListener('wheel', preventDefault);
-                window.removeEventListener('touchmove', preventDefault);
+                // document.documentElement.style.overflow = 'unset';
+
                 window.removeEventListener('keydown', handleKeyDown);
             };
         } else {
             document.body.style.overflow = 'unset';
-            document.documentElement.style.overflow = 'unset';
-            if ((window as any).lenis) (window as any).lenis.start();
-
-            window.removeEventListener('wheel', preventDefault);
-            window.removeEventListener('touchmove', preventDefault);
+            // document.documentElement.style.overflow = 'unset';
         }
     }, [selectedPost, currentMediaIndex]);
 
@@ -139,7 +207,6 @@ export default function BlogSection({
             const res = await fetch('/api/uploads');
             const data = await res.json();
             if (data.success) {
-                // Parse 'gallery' types
                 const parsedUploads = data.uploads.map((upload: any) => {
                     if (upload.type === 'gallery') {
                         try {
@@ -147,8 +214,8 @@ export default function BlogSection({
                             return {
                                 ...upload,
                                 media: mediaItems,
-                                url: mediaItems[0]?.url, // Default to first item for preview
-                                type: mediaItems[0]?.type // Default to first item type for preview
+                                url: mediaItems[0]?.url,
+                                type: mediaItems[0]?.type
                             };
                         } catch (e) {
                             console.error("Failed to parse gallery media", e);
@@ -170,8 +237,11 @@ export default function BlogSection({
         fetchUploads();
     }, []);
 
-    const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete this post?")) return;
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const performDelete = async () => {
         try {
             const res = await fetch(`/api/posts/${selectedPost.id}`, {
                 method: 'DELETE',
@@ -181,13 +251,16 @@ export default function BlogSection({
             const data = await res.json();
             if (data.success) {
                 setSelectedPost(null);
+                setShowDeleteConfirm(false);
                 fetchUploads();
             } else {
                 alert(data.message || "Failed to delete");
+                setShowDeleteConfirm(false);
             }
         } catch (e) {
             console.error(e);
             alert("Failed to delete");
+            setShowDeleteConfirm(false);
         }
     };
 
@@ -215,8 +288,6 @@ export default function BlogSection({
 
     const handleLike = async (e: React.MouseEvent, post: any) => {
         e.stopPropagation();
-
-        // Fail-safe: Check localStorage one last time if state is missing
         let activeUser = currentUsername;
         if (!activeUser) {
             const storedUsername = localStorage.getItem("username");
@@ -249,10 +320,11 @@ export default function BlogSection({
             if (!data.success) {
                 throw new Error(data.message || "Failed to like");
             }
-            fetchUploads();
+            // fetchUploads(); // Removed to prevent flickering
         } catch (error: any) {
             console.error("Like failed", error);
             alert(error.message || "Failed to update like. Please try again.");
+            // Revert optimistic update
             setSelectedPost(post);
             setUploads(prev => prev.map(u => u.id === post.id ? post : u));
         }
@@ -260,8 +332,6 @@ export default function BlogSection({
 
     const handleComment = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        // Fail-safe: Check localStorage one last time
         let activeUser = currentUsername;
         if (!activeUser) {
             const storedUsername = localStorage.getItem("username");
@@ -281,7 +351,8 @@ export default function BlogSection({
             id: Date.now(),
             text: text,
             createdAt: new Date().toISOString(),
-            user: { username: currentUsername }
+            user: { username: currentUsername },
+            parentId: replyingTo?.id
         };
 
         const optimisticPost = {
@@ -296,28 +367,107 @@ export default function BlogSection({
             const res = await fetch(`/api/posts/${selectedPost.id}/comment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUsername, text })
+                body: JSON.stringify({
+                    username: currentUsername,
+                    text,
+                    parentId: replyingTo?.id
+                })
             });
+            setReplyingTo(null);
             const data = await res.json();
 
             if (data.success) {
-                fetchUploads();
-                const updatedRes = await fetch('/api/uploads');
-                const updatedData = await updatedRes.json();
-                if (updatedData.success) {
-                    const updatedPost = updatedData.uploads.find((u: any) => u.id === selectedPost.id);
-                    if (updatedPost) {
-                        setSelectedPost(updatedPost);
-                        setUploads(updatedData.uploads);
-                    }
+                // Update the specific post with the real data from the server response (e.g. real comment ID)
+                // without refetching everything to avoid flicker
+                if (data.comment) {
+                    const realComment = data.comment;
+                    setUploads(prev => prev.map(u => {
+                        if (u.id === selectedPost.id) {
+                            // Replace optimistic comment with real one
+                            // For simplicity in this fix, we just append the real one if not found (unlikely) or replace.
+                            return { ...u, comments: [...(u.comments.filter((c: any) => c.id !== optimisticComment.id)), realComment] };
+                        }
+                        return u;
+                    }));
+
+                    setSelectedPost((prev: any) => {
+                        if (!prev) return null;
+                        return {
+                            ...prev,
+                            comments: [...(prev.comments.filter((c: any) => c.id !== optimisticComment.id)), realComment]
+                        };
+                    });
                 }
             } else {
-                throw new Error(data.message || "Failed to comment");
+                throw new Error(data.message);
             }
         } catch (error: any) {
             console.error("Comment failed", error);
-            alert(error.message || "Failed to post comment. Please try again.");
-            fetchUploads();
+            alert("Failed to post comment");
+            // Revert
+            setSelectedPost(selectedPost);
+            setUploads(prev => prev.map(u => u.id === selectedPost.id ? selectedPost : u));
+        }
+    };
+
+    const swipeConfidenceThreshold = 100;
+    const swipePower = (offset: number, velocity: number) => {
+        return Math.abs(offset) * velocity;
+    };
+
+    const variants = {
+        enter: (direction: number) => ({
+            zIndex: 0,
+            x: direction > 0 ? "100%" : "-100%",
+            opacity: 1
+        }),
+        center: {
+            zIndex: 1,
+            x: 0,
+            opacity: 1
+        },
+        exit: (direction: number) => ({
+            zIndex: 0,
+            x: direction < 0 ? "100%" : "-100%",
+            opacity: 1
+        })
+    };
+
+    const [isDesktop, setIsDesktop] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const paginate = (newDirection: number) => {
+        setDirection(newDirection);
+        setCurrentMediaIndex(prev => prev + newDirection);
+    };
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [direction, setDirection] = useState(0);
+    const activeAspectRatio = mediaAspectRatios[0] || 1;
+
+    const handleMediaLoad = (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>, index: number) => {
+        const { naturalWidth, naturalHeight, videoWidth, videoHeight } = event.currentTarget as any;
+        const width = naturalWidth || videoWidth;
+        const height = naturalHeight || videoHeight;
+        if (width && height) {
+            const ratio = width / height;
+            setMediaAspectRatios(prev => ({ ...prev, [index]: ratio }));
+        }
+    };
+
+    const handleGridMediaLoad = (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>, id: string) => {
+        const { naturalWidth, naturalHeight, videoWidth, videoHeight } = event.currentTarget as any;
+        const width = naturalWidth || videoWidth;
+        const height = naturalHeight || videoHeight;
+        if (width && height) {
+            const ratio = width / height;
+            setGridAspectRatios(prev => ({ ...prev, [id]: ratio }));
         }
     };
 
@@ -341,7 +491,24 @@ export default function BlogSection({
         return Math.floor(seconds) + " seconds ago";
     };
 
+    const onReply = (comment: any) => {
+        setReplyingTo(comment);
+        commentInputRef.current?.focus();
+    };
+
     const displayedUploads = limit ? uploads.slice(0, limit) : uploads;
+
+    useEffect(() => {
+        if (selectedPost) {
+            if (gridAspectRatios[selectedPost.id]) {
+                setMediaAspectRatios({ 0: gridAspectRatios[selectedPost.id] });
+            } else {
+                setMediaAspectRatios({});
+            }
+            setCurrentMediaIndex(0);
+            setDirection(0);
+        }
+    }, [selectedPost?.id]);
 
     return (
         <section id="media" className={`bg-background text-foreground ${hideHeader ? '' : 'py-24'}`}>
@@ -380,6 +547,7 @@ export default function BlogSection({
                                 onClick={() => {
                                     setSelectedPost(upload);
                                     setCurrentMediaIndex(0);
+                                    setDirection(0);
                                 }}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
@@ -392,16 +560,14 @@ export default function BlogSection({
                                         <video
                                             src={upload.url}
                                             className={`w-full ${forceSquare ? 'h-full object-cover' : 'h-auto object-contain'} transition-transform duration-700 group-hover:scale-105`}
-                                            muted
-                                            loop
-                                            autoPlay
-                                            playsInline
+                                            onLoadedMetadata={(e) => handleGridMediaLoad(e, upload.id)}
                                         />
                                     ) : (
                                         <img
                                             src={upload.url}
                                             alt={upload.title || "User upload"}
                                             className={`w-full ${forceSquare ? 'h-full object-cover' : 'h-auto object-contain'} transition-transform duration-700 group-hover:scale-105`}
+                                            onLoad={(e) => handleGridMediaLoad(e, upload.id)}
                                         />
                                     )}
                                     {upload.media && upload.media.length > 1 && (
@@ -425,245 +591,455 @@ export default function BlogSection({
                         ))}
                     </div>
                 )}
-            </div>
 
-            {selectedPost && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-                    onClick={() => setSelectedPost(null)}
-                >
+                {selectedPost && (
                     <div
-                        className="bg-background rounded-3xl overflow-hidden w-full max-w-6xl h-[85vh] flex flex-col md:flex-row shadow-2xl border border-border"
-                        onClick={(e) => e.stopPropagation()}
+                        ref={overlayRef}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8 opacity-0"
+                        onClick={handleCloseModal}
                     >
-                        <div className="md:w-2/3 bg-black flex items-center justify-center relative h-full overflow-hidden">
-                            <div className="w-full h-full overflow-hidden relative flex items-center">
+                        <AnimatePresence>
+                            {showDeleteConfirm && (
                                 <motion.div
-                                    className="flex h-full w-full"
-                                    animate={{ x: `-${currentMediaIndex * 100}%` }}
-                                    transition={{ ease: "easeOut", duration: 0.3 }}
-                                    drag={selectedPost.media && selectedPost.media.length > 1 ? "x" : false}
-                                    dragElastic={0}
-                                    onDragEnd={(e, { offset, velocity }) => {
-                                        const swipe = offset.x;
-                                        const threshold = 50; // Reduced threshold for easier swipe
-                                        const mediaLength = selectedPost.media ? selectedPost.media.length : 1;
-
-                                        if (swipe < -threshold && currentMediaIndex < mediaLength - 1) {
-                                            setCurrentMediaIndex(prev => prev + 1);
-                                        } else if (swipe > threshold && currentMediaIndex > 0) {
-                                            setCurrentMediaIndex(prev => prev - 1);
-                                        }
-                                    }}
-                                    style={{ touchAction: "none" }}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    {(selectedPost.media || [selectedPost]).map((item: any, index: number) => (
-                                        <div key={index} className="min-w-full h-full flex items-center justify-center relative p-0 md:p-4">
-                                            {item.type.startsWith('video') ? (
-                                                <video
-                                                    src={item.url}
-                                                    controls
-                                                    className="w-full h-full object-contain"
-                                                    playsInline
-                                                />
-                                            ) : (
-                                                <img
-                                                    src={item.url}
-                                                    alt={selectedPost.title}
-                                                    className="w-full h-full object-contain pointer-events-none select-none"
-                                                    draggable={false}
-                                                />
-                                            )}
+                                    <motion.div
+                                        initial={{ scale: 1.1, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        exit={{ scale: 0.95, opacity: 0 }}
+                                        transition={{ type: "spring", damping: 25, stiffness: 400 }}
+                                        className="bg-card w-[260px] rounded-xl overflow-hidden text-center shadow-2xl"
+                                    >
+                                        <div className="p-6 border-b border-border">
+                                            <h3 className="text-lg font-semibold">Delete post?</h3>
+                                            <p className="text-sm text-muted-foreground mt-1">
+                                                Are you sure you want to delete this post?
+                                            </p>
                                         </div>
-                                    ))}
-                                </motion.div>
-                            </div>
-
-                            {/* Navigation Buttons */}
-                            {selectedPost.media && selectedPost.media.length > 1 && (
-                                <>
-                                    {currentMediaIndex > 0 && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setCurrentMediaIndex(prev => prev - 1);
-                                            }}
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10"
-                                        >
-                                            <ChevronLeft size={24} />
-                                        </button>
-                                    )}
-                                    {currentMediaIndex < selectedPost.media.length - 1 && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setCurrentMediaIndex(prev => prev + 1);
-                                            }}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10"
-                                        >
-                                            <ChevronRight size={24} />
-                                        </button>
-                                    )}
-                                    {/* Dots Indicator */}
-                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                                        {selectedPost.media.map((_: any, idx: number) => (
-                                            <div
-                                                key={idx}
-                                                className={`w-2 h-2 rounded-full transition-all ${idx === currentMediaIndex ? "bg-white w-4" : "bg-white/50"}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-
-                            <button
-                                onClick={() => setSelectedPost(null)}
-                                className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 md:hidden z-20"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="md:w-1/3 flex flex-col h-full bg-background">
-                            <div className="p-6 border-b border-border flex justify-between items-start shrink-0">
-                                <div className="flex-1 mr-4">
-                                    {isEditing ? (
-                                        <input
-                                            type="text"
-                                            value={editTitle}
-                                            onChange={(e) => setEditTitle(e.target.value)}
-                                            className="w-full text-2xl font-bold mb-1 border-b border-border bg-transparent focus:border-blue-500 outline-none text-foreground"
-                                        />
-                                    ) : (
-                                        <h3 className="text-2xl font-bold mb-1 line-clamp-1 text-foreground">{selectedPost.title || "Untitled"}</h3>
-                                    )}
-                                    <p className="text-sm text-muted-foreground">
-                                        by <span className="font-medium text-foreground">{selectedPost.user?.username}</span> • {timeAgo(selectedPost.createdAt)}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {(currentUsername === selectedPost.user?.username || currentUsername === 'zackysetiawan') && (
-                                        <>
-                                            {isEditing ? (
-                                                <button onClick={handleUpdate} className="text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 p-2 rounded-full transition-colors">
-                                                    <Save size={20} />
-                                                </button>
-                                            ) : (
-                                                <button onClick={() => setIsEditing(true)} className="text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded-full transition-colors">
-                                                    <Edit2 size={20} />
-                                                </button>
-                                            )}
-                                            <button onClick={handleDelete} className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition-colors">
-                                                <Trash2 size={20} />
+                                        <div className="flex flex-col">
+                                            <button
+                                                onClick={performDelete}
+                                                className="p-3 text-red-500 font-bold border-b border-border hover:bg-muted transition-colors text-sm"
+                                            >
+                                                Delete
                                             </button>
-                                        </>
-                                    )}
-                                    <button onClick={() => setSelectedPost(null)} className="hidden md:block text-muted-foreground hover:text-foreground transition-colors p-2">
-                                        <X size={24} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="px-6 pt-6 shrink-0">
-                                {isEditing ? (
-                                    <textarea
-                                        value={editDescription}
-                                        onChange={(e) => setEditDescription(e.target.value)}
-                                        className="w-full text-muted-foreground bg-transparent mb-6 pb-6 border-b border-border focus:border-blue-500 outline-none resize-none h-24"
-                                    />
-                                ) : (
-                                    selectedPost.description && (
-                                        <p className="text-muted-foreground mb-6 pb-6 border-b border-border">{selectedPost.description}</p>
-                                    )
-                                )}
-                                <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider mb-4">Comments</h4>
-                            </div>
-
-                            <div
-                                className="px-6 pb-6 flex-1 overflow-y-auto custom-scrollbar-light flex flex-col min-h-0"
-                                data-lenis-prevent
-                                style={{ overscrollBehavior: 'contain' }}
-                            >
-                                <div className="space-y-6">
-                                    {selectedPost.comments?.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                                            <MessageCircle size={32} className="mb-2 opacity-20" />
-                                            <p className="text-sm italic">No comments yet.</p>
+                                            <button
+                                                onClick={() => setShowDeleteConfirm(false)}
+                                                className="p-3 text-foreground hover:bg-muted transition-colors text-sm"
+                                            >
+                                                Don't delete
+                                            </button>
                                         </div>
-                                    ) : (
-                                        selectedPost.comments?.map((comment: any) => (
-                                            <div key={comment.id} className="flex gap-3 group">
-                                                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-xs shrink-0">
-                                                    {comment.user?.username?.[0]?.toUpperCase() || "?"}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-baseline justify-between">
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="font-semibold text-sm text-foreground">{comment.user?.username}</span>
-                                                            <span className="text-[10px] text-muted-foreground">{timeAgo(comment.createdAt)}</span>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        {/* Modal Content */}
+                        <div
+                            ref={contentRef}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-card rounded-xl overflow-y-auto md:overflow-hidden shadow-2xl flex flex-col md:flex-row relative max-h-[95vh] w-full md:w-auto opacity-0"
+                            style={{
+                                '--aspect-ratio': activeAspectRatio,
+                                '--sidebar-width': isDesktop ? '400px' : '0px',
+                                '--max-modal-width': 'calc(100vw - 40px)',
+                                '--max-modal-height': 'calc(100vh - 40px)',
+                                '--max-img-width': 'min(1200px, calc(var(--max-modal-width) - var(--sidebar-width)))',
+
+                                // Calculate dimensions based on aspect ratio
+                                '--perfect-height': 'calc(var(--max-img-width) / var(--aspect-ratio))',
+                                '--constrained-height': 'min(var(--max-modal-height), var(--perfect-height))',
+
+                                // Final dimensions
+                                '--calculated-height': 'var(--constrained-height)',
+                                '--calculated-width': 'calc(var(--calculated-height) * var(--aspect-ratio))',
+
+                                height: isDesktop ? 'var(--calculated-height)' : 'auto',
+                                width: isDesktop ? 'calc(var(--calculated-width) + var(--sidebar-width))' : '100%',
+                                maxWidth: 'var(--max-modal-width)'
+                            } as React.CSSProperties}
+                        >
+                            {/* Top Right Actions */}
+                            <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
+                                {currentUsername === selectedPost.user?.username && (
+                                    <button
+                                        onClick={handleDelete}
+                                        className="p-2 bg-red-500/80 hover:bg-red-600 text-white rounded-full backdrop-blur-sm transition-colors"
+                                        title="Delete Post"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={handleCloseModal}
+                                    className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {/* Image/Video Section */}
+                            <div className="relative bg-black flex items-center justify-center overflow-hidden"
+                                style={{
+                                    width: isDesktop ? 'var(--calculated-width)' : '100%',
+                                    height: isDesktop ? '100%' : 'auto',
+                                    aspectRatio: isDesktop ? 'auto' : `${activeAspectRatio}`
+                                }}
+                            >
+                                {selectedPost.media && selectedPost.media.length > 0 ? (
+                                    <>
+                                        {/* Navigation Buttons */}
+                                        {selectedPost.media.length > 1 && (
+                                            <>
+                                                {currentMediaIndex > 0 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            paginate(-1);
+                                                        }}
+                                                        className="absolute left-4 z-20 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                                                    >
+                                                        <ChevronLeft size={24} />
+                                                    </button>
+                                                )}
+                                                {currentMediaIndex < selectedPost.media.length - 1 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            paginate(1);
+                                                        }}
+                                                        className="absolute right-4 z-20 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                                                    >
+                                                        <ChevronRight size={24} />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Media Content */}
+                                        <AnimatePresence initial={false} custom={direction}>
+                                            <motion.div
+                                                key={currentMediaIndex}
+                                                custom={direction}
+                                                variants={variants}
+                                                initial="enter"
+                                                animate="center"
+                                                exit="exit"
+                                                transition={{
+                                                    x: { type: "tween", ease: "easeInOut", duration: 0.3 },
+                                                    opacity: { duration: 0.2 }
+                                                }}
+                                                style={{ willChange: 'transform' }}
+                                                drag="x"
+                                                dragConstraints={{ left: 0, right: 0 }}
+                                                dragElastic={1}
+                                                onDragEnd={(e, { offset, velocity }) => {
+                                                    const swipe = swipePower(offset.x, velocity.x);
+
+                                                    if (swipe < -swipeConfidenceThreshold) {
+                                                        if (currentMediaIndex < selectedPost.media.length - 1) {
+                                                            paginate(1);
+                                                        }
+                                                    } else if (swipe > swipeConfidenceThreshold) {
+                                                        if (currentMediaIndex > 0) {
+                                                            paginate(-1);
+                                                        }
+                                                    }
+                                                }}
+                                                className="absolute w-full h-full flex items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing"
+                                            >
+                                                {(() => {
+                                                    const media = selectedPost.media[currentMediaIndex];
+                                                    const isVideo = media.type?.startsWith('video') || media.url.match(/\.(mp4|webm|ogg)$/i);
+
+                                                    if (isVideo) {
+                                                        return (
+                                                            <div
+                                                                className="w-full h-full pointer-events-auto z-10 relative flex items-center justify-center"
+                                                                onPointerDown={(e) => e.stopPropagation()}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                onTouchStart={(e) => e.stopPropagation()}
+                                                            >
+                                                                <video
+                                                                    src={media.url}
+                                                                    controls
+                                                                    autoPlay
+                                                                    muted
+                                                                    loop
+                                                                    playsInline
+                                                                    preload="auto"
+                                                                    className="w-full h-full object-contain"
+                                                                    poster={media.poster}
+                                                                    onLoadedMetadata={(e) => handleMediaLoad(e, currentMediaIndex)}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div className="relative w-full h-full">
+                                                            <img
+                                                                src={media.url}
+                                                                alt={selectedPost.title}
+                                                                className="w-full h-full object-contain"
+                                                                draggable={false}
+                                                                onLoad={(e) => handleMediaLoad(e, currentMediaIndex)}
+                                                            />
                                                         </div>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{comment.text}</p>
-                                                </div>
+                                                    );
+                                                })()}
+                                            </motion.div>
+                                        </AnimatePresence>
+
+                                        {/* Dots Indicator */}
+                                        {selectedPost.media.length > 1 && (
+                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                                {selectedPost.media.map((_: any, idx: number) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={`w-1.5 h-1.5 rounded-full transition-colors ${idx === currentMediaIndex ? "bg-white" : "bg-white/50"
+                                                            }`}
+                                                    />
+                                                ))}
                                             </div>
-                                        ))
-                                    )}
+                                        )}
+                                    </>
+                                ) : (
+                                    <img
+                                        src={selectedPost.url}
+                                        alt={selectedPost.title}
+                                        className="w-full h-full object-contain"
+                                        onLoad={(e) => handleMediaLoad(e, 0)}
+                                    />
+                                )}
+                            </div>
+
+                            {/* Sidebar (Comments & Info) */}
+                            <div className="flex flex-col bg-card w-full md:w-[var(--sidebar-width)] h-auto md:h-full border-l border-border">
+                                {/* Header */}
+                                <div className="p-4 border-b border-border flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                            {selectedPost.user?.username?.[0]?.toUpperCase() || "?"}
+                                        </div>
+                                        <div>
+                                            <div className="font-semibold text-sm">
+                                                {selectedPost.user?.username || "Anonymous"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Comments Scroll Area */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar-light">
+                                    {/* Caption */}
+                                    <div className="flex gap-3">
+
+                                        <div className="text-sm w-full">
+                                            {selectedPost.title && <div className="font-bold text-base mb-1">{selectedPost.title}</div>}
+                                            {selectedPost.description && (
+                                                <div className="whitespace-pre-wrap text-sm">
+                                                    {selectedPost.description}
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-muted-foreground mt-2">
+                                                {timeAgo(selectedPost.createdAt)}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Comments List */}
+                                    {selectedPost.comments?.filter((c: any) => !c.parentId).map((comment: any) => (
+                                        <CommentItem
+                                            key={comment.id}
+                                            comment={comment}
+                                            allComments={selectedPost.comments}
+                                            onReply={onReply}
+                                        />
+                                    ))}
                                     <div ref={commentsEndRef} />
                                 </div>
-                            </div>
 
-                            <div className="p-4 border-t border-border bg-background shrink-0">
-                                <div className="flex items-center gap-6 mb-4">
-                                    <motion.button
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={(e) => handleLike(e, selectedPost)}
-                                        className="flex items-center gap-2 text-muted-foreground hover:text-red-500 transition-colors group"
-                                    >
-                                        <motion.div
-                                            initial={false}
-                                            animate={{
-                                                scale: selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? [1, 1.2, 1] : 1,
-                                                color: selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? "#ef4444" : "currentColor"
-                                            }}
-                                            transition={{ duration: 0.3 }}
+                                {/* Actions & Input */}
+                                <div className="p-4 border-t border-border bg-card">
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <button
+                                            onClick={(e) => handleLike(e, selectedPost)}
+                                            className="hover:opacity-70 transition-opacity"
                                         >
                                             <Heart
+                                                className={selectedPost.likes?.some((l: any) => (l.user?.username || l.username) === currentUsername) ? "fill-red-500 text-red-500" : ""}
                                                 size={24}
-                                                className={selectedPost.likes?.some((l: any) => l.user?.username === currentUsername) ? "fill-red-500 stroke-red-500" : "stroke-current"}
                                             />
-                                        </motion.div>
-                                        <span className="font-medium text-sm">{selectedPost.likes?.length || 0} likes</span>
-                                    </motion.button>
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                        <MessageCircle size={24} className="stroke-current" />
-                                        <span className="font-medium text-sm">{selectedPost.comments?.length || 0} comments</span>
-                                    </div>
-                                </div>
+                                        </button>
+                                        <button className="hover:opacity-70 transition-opacity">
+                                            <MessageCircle size={24} />
+                                        </button>
 
-                                <form onSubmit={handleComment} className="flex items-center gap-3">
-                                    <div className="flex-1 relative">
+                                    </div>
+                                    <div className="text-sm font-semibold mb-2">
+                                        {selectedPost.likes?.length || 0} likes
+                                    </div>
+                                    <div className="text-xs text-muted-foreground uppercase mb-4">
+                                        {timeAgo(selectedPost.createdAt)}
+                                    </div>
+                                    {replyingTo && (
+                                        <div className="flex items-center justify-between bg-muted/30 p-2 rounded-lg mb-2 text-xs">
+                                            <span className="text-muted-foreground">
+                                                Replying to <span className="font-bold text-foreground">@{replyingTo.user?.username}</span>
+                                            </span>
+                                            <button
+                                                onClick={() => setReplyingTo(null)}
+                                                className="text-muted-foreground hover:text-foreground"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    <form onSubmit={handleComment} className="flex gap-2">
                                         <input
                                             type="text"
+                                            placeholder="Add a comment..."
                                             value={commentText}
                                             onChange={(e) => setCommentText(e.target.value)}
-                                            placeholder={currentUsername ? "Add a comment..." : "Login to comment"}
-                                            disabled={!currentUsername}
-                                            className="w-full bg-muted border-none rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-blue-100 focus:bg-background transition-all outline-none placeholder:text-muted-foreground text-foreground"
+                                            className="flex-1 bg-transparent border-none outline-none text-sm focus:ring-0 px-0"
+                                            ref={commentInputRef}
                                         />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={!currentUsername || !commentText.trim()}
-                                        className="p-3 bg-blue-600 text-white rounded-full disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground hover:bg-blue-700 transition-all hover:scale-105 active:scale-95 shadow-sm"
-                                    >
-                                        <Send size={18} className={commentText.trim() ? "ml-0.5" : ""} />
-                                    </button>
-                                </form>
+                                        <button
+                                            type="submit"
+                                            disabled={!commentText.trim()}
+                                            className="text-blue-500 font-semibold text-sm disabled:opacity-50 hover:text-blue-600"
+                                        >
+                                            Post
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </section>
+                )}
+            </div>
+        </section >
     );
 }
+
+const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 30) return "Just now";
+
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " years ago";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " months ago";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " days ago";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " hours ago";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " minutes ago";
+    return Math.floor(seconds) + " seconds ago";
+};
+
+const getAllReplies = (rootId: string, allComments: any[]) => {
+    let replies: any[] = [];
+    const directChildren = allComments.filter(c => c.parentId === rootId);
+
+    directChildren.forEach(child => {
+        replies.push(child);
+        const grandChildren = getAllReplies(child.id, allComments);
+        replies = [...replies, ...grandChildren];
+    });
+
+    return replies.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+};
+
+const CommentItem = ({ comment, allComments, depth = 0, onReply }: { comment: any, allComments: any[], depth?: number, onReply: (c: any) => void }) => {
+    const [visibleCount, setVisibleCount] = useState(0);
+
+    // Only fetch replies if we are at the top level (depth 0)
+    // If depth > 0, we assume the parent has already fetched and flattened us into the list
+    const replies = depth === 0 ? getAllReplies(comment.id, allComments) : [];
+
+    const handleViewReplies = () => {
+        setVisibleCount(prev => prev + 6);
+    };
+
+    return (
+        <div className="flex flex-col gap-1 mb-5">
+            <div className="flex gap-3">
+                <div className={`rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold shrink-0 ${depth > 0 ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'}`}>
+                    {comment.user?.username?.[0]?.toUpperCase() || "?"}
+                </div>
+                <div className="text-sm w-full">
+                    <div className="flex flex-col">
+                        <span className="font-semibold text-sm mr-2">
+                            {comment.user?.username || "Anonymous"}
+                            <span className="font-normal text-foreground/90 ml-2">{comment.text}</span>
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1">
+                        <div className="text-xs text-muted-foreground">
+                            {timeAgo(comment.createdAt)}
+                        </div>
+                        <button
+                            onClick={() => onReply(comment)}
+                            className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            Reply
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Replies Section - Only rendered for top-level comments */}
+            {replies.length > 0 && depth === 0 && (
+                <div className="pl-11 mt-1">
+                    {/* Render Visible Replies */}
+                    {visibleCount > 0 && (
+                        <div className="space-y-4 mt-2 mb-2">
+                            {replies.slice(0, visibleCount).map(reply => (
+                                <CommentItem
+                                    key={reply.id}
+                                    comment={reply}
+                                    allComments={allComments}
+                                    depth={depth + 1}
+                                    onReply={onReply}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* View/Hide Controls */}
+                    <div className="flex items-center gap-4">
+                        {visibleCount < replies.length && (
+                            <button
+                                onClick={handleViewReplies}
+                                className="text-xs font-semibold text-muted-foreground/70 flex items-center gap-3 hover:text-foreground transition-colors group"
+                            >
+                                {visibleCount === 0 && <div className="w-8 h-[1px] bg-muted-foreground/40 group-hover:bg-foreground/60 transition-colors"></div>}
+                                {visibleCount === 0 ? `View replies (${replies.length})` : `View ${Math.min(6, replies.length - visibleCount)} more replies`}
+                            </button>
+                        )}
+
+                        {visibleCount > 0 && (
+                            <button
+                                onClick={() => setVisibleCount(0)}
+                                className="text-xs font-semibold text-muted-foreground/70 hover:text-foreground transition-colors"
+                            >
+                                Hide replies
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

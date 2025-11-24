@@ -19,11 +19,8 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
         offset: ["start start", "end start"],
     });
 
-    const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-    const textY = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-    const textOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-    const terminalY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
-    const terminalOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+    const textOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+    const terminalOpacity = useTransform(scrollYProgress, [0, 0.9], [1, 0]);
 
     return (
         <section
@@ -32,7 +29,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
             className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-background pt-20 md:pt-0"
         >
             <motion.div
-                style={{ y: bgY }}
+
                 className="absolute inset-0 z-0"
             >
                 {/* Dark Mode Background */}
@@ -52,7 +49,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
 
             <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                 <motion.div
-                    style={{ y: textY, opacity: textOpacity }}
+                    style={{ opacity: textOpacity }}
                     className="text-center md:text-left"
                 >
                     <motion.h1
@@ -118,7 +115,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
 
                 <motion.div
                     id="login"
-                    style={{ y: terminalY, opacity: terminalOpacity }}
+                    style={{ opacity: terminalOpacity }}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}

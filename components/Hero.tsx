@@ -36,18 +36,18 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                 <img
                     src="https://i.pinimg.com/originals/e3/e4/fd/e3e4fdf3ac344304f2435f15b00d7bae.gif"
                     alt="Background Dark"
-                    className="hidden dark:block w-full h-full object-cover opacity-30 scale-110"
+                    className="hidden dark:block w-full h-full object-cover opacity-40 md:opacity-30 scale-110"
                 />
                 {/* Light Mode Background */}
                 <img
                     src="https://wallpapers-clan.com/wp-content/uploads/2024/04/cute-anime-girl-love-hearts-gif-desktop-wallpaper-preview.gif"
                     alt="Background Light"
-                    className="block dark:hidden w-full h-full object-cover opacity-80 scale-110"
+                    className="block dark:hidden w-full h-full object-cover opacity-60 md:opacity-80 scale-110"
                 />
             </motion.div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-pink-100/20 via-background/40 to-background/80 dark:from-blue-900/20 dark:via-black/80 dark:to-black" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-pink-100/10 via-background/30 to-background/70 md:from-pink-100/20 md:via-background/40 md:to-background/80 dark:from-blue-900/20 dark:via-black/60 dark:to-black/90" />
 
-            <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+            <div className="container mx-auto px-4 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
                 <motion.div
                     style={{ opacity: textOpacity }}
                     className="text-center md:text-left"
@@ -56,9 +56,9 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.2 }}
-                        className="text-5xl md:text-7xl font-bold tracking-tighter text-purple-950 dark:text-foreground mb-6"
+                        className="text-3xl sm:text-4xl md:text-7xl font-bold tracking-tight md:tracking-tighter leading-tight text-purple-950 dark:text-foreground mb-2 md:mb-2"
                     >
-                        Share anything <br />
+                        Share anything <br className="hidden md:block" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 dark:text-foreground dark:bg-none">
                             you want
                         </span>
@@ -68,7 +68,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.4 }}
-                        className="text-lg md:text-xl text-purple-900/80 dark:text-muted-foreground max-w-xl mx-auto md:mx-0 mb-10"
+                        className="text-sm sm:text-base md:text-xl text-purple-900/80 dark:text-muted-foreground max-w-xl mx-auto md:mx-0 mb-6 md:mb-6 leading-relaxed tracking-wide"
                     >
                         Upload your images, videos, and GIFs
                     </motion.p>
@@ -88,7 +88,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                                     exit={{ opacity: 0, y: -20 }}
                                     transition={{ duration: 0.3 }}
                                     href="#login"
-                                    className="inline-flex items-center gap-2 px-8 py-4 text-lg font-medium text-white bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 dark:bg-blue-600 dark:bg-none dark:hover:bg-blue-700 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-500/30 dark:shadow-blue-500/30"
+                                    className="inline-flex items-center gap-2 px-6 py-3 text-sm md:px-8 md:py-4 md:text-lg font-semibold tracking-wide text-white bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 dark:bg-blue-600 dark:bg-none dark:hover:bg-blue-700 rounded-full transition-all hover:scale-105 shadow-lg shadow-pink-500/30 dark:shadow-blue-500/30"
                                 >
                                     Login via Terminal
                                 </motion.a>
@@ -104,7 +104,7 @@ export default function Hero({ onLogin, onLogout, isLoggedIn, username }: HeroPr
                                         e.preventDefault();
                                         document.getElementById('upload')?.scrollIntoView({ behavior: 'smooth' });
                                     }}
-                                    className="inline-flex items-center gap-2 px-8 py-4 text-lg font-medium text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 dark:bg-green-600 dark:bg-none dark:hover:bg-green-700 rounded-full transition-all hover:scale-105 shadow-lg shadow-cyan-500/30 dark:shadow-green-500/30"
+                                    className="inline-flex items-center gap-2 px-6 py-3 text-sm md:px-8 md:py-4 md:text-lg font-semibold tracking-wide text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 dark:bg-green-600 dark:bg-none dark:hover:bg-green-700 rounded-full transition-all hover:scale-105 shadow-lg shadow-cyan-500/30 dark:shadow-green-500/30"
                                 >
                                     Start Uploading
                                 </motion.a>

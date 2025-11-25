@@ -5,101 +5,34 @@ import { Volume2, VolumeX, Music } from "lucide-react";
 
 export default function BackgroundMusic() {
     const [isPlaying, setIsPlaying] = useState(false);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(true); // Default to muted
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     // Local music file
     const musicUrl = "/reze_theme.mp3";
 
     useEffect(() => {
-        // Set volume immediately
+        // Initialize audio state
         if (audioRef.current) {
             audioRef.current.volume = 0.3;
-            audioRef.current.currentTime = 0; // Ensure start from beginning on mount/refresh
+            audioRef.current.muted = true; // Ensure it starts muted
         }
 
+        // Attempt to play automatically (muted)
         const attemptPlay = async () => {
             if (!audioRef.current) return;
 
-            // Strategy: Try unmuted first. If blocked, try muted.
             try {
-                // 1. Try normal unmuted play
+                // Browsers generally allow autoplay if muted
                 await audioRef.current.play();
                 setIsPlaying(true);
             } catch (err) {
-                // 2. Fallback: Muted play (usually allowed by browsers)
-                try {
-                    audioRef.current.muted = true;
-                    await audioRef.current.play();
-                    setIsPlaying(true);
-                    setIsMuted(true); // Sync state
-                } catch (mutedErr) {
-                    // Both failed, will retry in interval
-                }
+                console.log("Autoplay prevented:", err);
+                setIsPlaying(false);
             }
         };
 
-        // Try immediately
         attemptPlay();
-
-        // Retry every 2 seconds
-        const interval = setInterval(() => {
-            if (audioRef.current) {
-                if (audioRef.current.paused) {
-                    attemptPlay();
-                } else {
-                    // If playing, we can stop the interval
-                    clearInterval(interval);
-                    setIsPlaying(true);
-                }
-            }
-        }, 2000);
-
-        // "Magic" Persistent Unmute Strategy
-        const handleInteraction = () => {
-            if (audioRef.current) {
-                // Attempt to unmute
-                if (audioRef.current.muted) {
-                    audioRef.current.muted = false;
-                }
-
-                // Attempt to play if paused
-                if (audioRef.current.paused) {
-                    audioRef.current.play()
-                        .then(() => {
-                            setIsPlaying(true);
-                        })
-                        .catch(() => {
-                            // If play failed, likely need to keep muted for now
-                            audioRef.current!.muted = true;
-                            setIsMuted(true);
-                        });
-                }
-
-                // Check if we successfully achieved "Playing & Unmuted"
-                if (!audioRef.current.paused && !audioRef.current.muted) {
-                    setIsMuted(false);
-                    setIsPlaying(true);
-                    // Only remove listeners when we have TOTAL SUCCESS
-                    ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
-                        window.removeEventListener(event, handleInteraction)
-                    );
-                }
-            }
-        };
-
-        // Add persistent global listeners - we don't use { once: true } anymore
-        // We want to keep trying on every click until we get sound.
-        ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
-            window.addEventListener(event, handleInteraction)
-        );
-
-        return () => {
-            clearInterval(interval);
-            ['click', 'keydown', 'scroll', 'touchstart', 'pointerdown', 'focus'].forEach(event =>
-                window.removeEventListener(event, handleInteraction)
-            );
-        };
     }, []);
 
     const togglePlay = () => {
@@ -116,8 +49,10 @@ export default function BackgroundMusic() {
     const toggleMute = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (audioRef.current) {
-            audioRef.current.muted = !isMuted;
-            setIsMuted(!isMuted);
+            // Toggle mute state
+            const newMutedState = !isMuted;
+            audioRef.current.muted = newMutedState;
+            setIsMuted(newMutedState);
         }
     };
 
@@ -128,10 +63,12 @@ export default function BackgroundMusic() {
                     ref={audioRef}
                     src={musicUrl}
                     loop
-                    autoPlay
+                    muted // Default attribute
                     playsInline
                     preload="auto"
                     onEnded={() => setIsPlaying(false)}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
                 />
 
                 <button

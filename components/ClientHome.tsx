@@ -7,12 +7,17 @@ import BlogSection from "./BlogSection";
 import Footer from "./Footer";
 import Header from "./Header";
 import { AnimatePresence, motion } from "framer-motion";
+import LoadingScreen from "./LoadingScreen";
 
 export default function ClientHome() {
+    const [isLoading, setIsLoading] = useState(true);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [username, setUsername] = useState("");
 
     const [isDark, setIsDark] = useState(false);
+
+    // Removed the timeout-based loading logic
+    // Loading completion is now handled by the LoadingScreen callback
 
     useEffect(() => {
         const storedUsername = localStorage.getItem("username");
@@ -68,34 +73,57 @@ export default function ClientHome() {
         localStorage.removeItem("username");
     };
 
+    const handleLoadingComplete = () => {
+        setIsLoading(false);
+    };
+
     return (
         <main className="min-h-screen bg-background">
-            <Header isDark={isDark} toggleTheme={toggleTheme} />
-            <Hero
-                isLoggedIn={isLoggedIn}
-                onLogin={handleLogin}
-                onLogout={handleLogout}
-                username={username}
-            />
             <AnimatePresence>
-                {isLoggedIn && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                    >
-                        <UploadSection username={username} />
-                        <BlogSection
-                            username={username}
-                            limit={12}
-                            fullWidth={true}
-                            gridClassName="grid grid-cols-3 gap-0.5 md:grid-cols-3 lg:grid-cols-4 md:gap-4"
-                            forceSquare={true}
-                        />
-                        <Footer isDark={isDark} />
-                    </motion.div>
+                {isLoading && (
+                    <LoadingScreen
+                        key="loader"
+                        isDark={isDark}
+                        onComplete={handleLoadingComplete}
+                    />
                 )}
             </AnimatePresence>
+
+            {/* Render content but hide it or let it sit behind while loading */}
+            {!isLoading && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    <Header isDark={isDark} toggleTheme={toggleTheme} />
+                    <Hero
+                        isLoggedIn={isLoggedIn}
+                        onLogin={handleLogin}
+                        onLogout={handleLogout}
+                        username={username}
+                    />
+                    <AnimatePresence>
+                        {isLoggedIn && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                            >
+                                <UploadSection username={username} />
+                                <BlogSection
+                                    username={username}
+                                    limit={12}
+                                    fullWidth={true}
+                                    gridClassName="grid grid-cols-3 gap-0.5 md:grid-cols-3 lg:grid-cols-4 md:gap-4"
+                                    forceSquare={true}
+                                />
+                                <Footer isDark={isDark} />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </motion.div>
+            )}
         </main>
     );
 }

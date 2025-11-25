@@ -52,6 +52,26 @@ export default function BlogSection({
         setIsClosing(true);
     };
 
+    const handleNextPost = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const currentIndex = uploads.findIndex(u => u.id === selectedPost.id);
+        if (currentIndex < uploads.length - 1) {
+            setSelectedPost(uploads[currentIndex + 1]);
+            setCurrentMediaIndex(0);
+            setDirection(0);
+        }
+    };
+
+    const handlePrevPost = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const currentIndex = uploads.findIndex(u => u.id === selectedPost.id);
+        if (currentIndex > 0) {
+            setSelectedPost(uploads[currentIndex - 1]);
+            setCurrentMediaIndex(0);
+            setDirection(0);
+        }
+    };
+
     useEffect(() => {
         const handleResize = () => setIsDesktop(window.innerWidth >= 768);
         handleResize();
@@ -210,10 +230,18 @@ export default function BlogSection({
                             };
                         } catch (e) {
                             console.error("Failed to parse gallery media", e);
-                            return upload;
+                            return {
+                                ...upload,
+                                media: []
+                            };
                         }
+                    } else {
+                        // Handle single file legacy uploads
+                        return {
+                            ...upload,
+                            media: [{ url: upload.url, type: upload.type }]
+                        };
                     }
-                    return upload;
                 });
                 setUploads(parsedUploads);
             }
@@ -534,6 +562,26 @@ export default function BlogSection({
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8 opacity-0"
                         onClick={handleCloseModal}
                     >
+                        {/* Previous Post Button */}
+                        {uploads.findIndex(u => u.id === selectedPost.id) > 0 && (
+                            <button
+                                onClick={handlePrevPost}
+                                className="fixed left-2 md:left-8 top-1/2 -translate-y-1/2 z-[60] p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all"
+                            >
+                                <ChevronLeft size={32} />
+                            </button>
+                        )}
+
+                        {/* Next Post Button */}
+                        {uploads.findIndex(u => u.id === selectedPost.id) < uploads.length - 1 && (
+                            <button
+                                onClick={handleNextPost}
+                                className="fixed right-2 md:right-8 top-1/2 -translate-y-1/2 z-[60] p-3 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-md transition-all"
+                            >
+                                <ChevronRight size={32} />
+                            </button>
+                        )}
+
                         <AnimatePresence>
                             {showDeleteConfirm && (
                                 <motion.div
@@ -601,7 +649,7 @@ export default function BlogSection({
                             </div>
 
                             {/* Image/Video Section */}
-                            <div className="relative bg-black flex items-center justify-center overflow-hidden flex-1 min-h-[40vh] md:min-h-full md:min-w-[40vw] lg:min-w-[50vw]"
+                            <div className="relative bg-black grid grid-cols-1 grid-rows-1 items-center justify-center overflow-hidden w-auto min-h-[40vh] md:min-h-full"
                             >
                                 {selectedPost.media && selectedPost.media.length > 0 ? (
                                     <>
@@ -658,7 +706,7 @@ export default function BlogSection({
                                                         paginate(-1);
                                                     }
                                                 }}
-                                                className="absolute inset-0 flex items-center justify-center"
+                                                className="col-start-1 row-start-1 flex items-center justify-center w-full h-full"
                                             >
                                                 {(() => {
                                                     const media = selectedPost.media[currentMediaIndex];
@@ -688,7 +736,7 @@ export default function BlogSection({
                                                             <img
                                                                 src={media.url}
                                                                 alt={selectedPost.title}
-                                                                className="w-full h-full object-contain pointer-events-none"
+                                                                className="w-auto h-auto max-w-[calc(90vw-400px)] max-h-full object-contain pointer-events-none"
                                                                 draggable={false}
                                                                 onLoad={(e) => handleMediaLoad(e, currentMediaIndex)}
                                                             />
